@@ -5,16 +5,18 @@ exploration of the running app, and a real-backend end-to-end suite.
 
 ## Unit Tests
 
-Two fast, hermetic layers run on every change:
+A fast, hermetic layer runs on every change:
 
-- **Rust** — `just test-rust` runs `cargo test` against the backend. The `greet`
-  command is covered by a direct unit test in [`src-tauri/src/lib.rs`][lib].
 - **Frontend** — `just test-ts` runs `bun test`. The frontend tests render
   React components with [happy-dom][happy-dom] and [Testing Library][tl];
   `@tauri-apps/api/mocks` is available to mock the Tauri IPC layer when a
   component calls a command.
 
-`just test` runs both. The full IPC path with the real ACL belongs in the
+The backend `greet` command is covered by a direct unit test in
+[`src-tauri/src/lib.rs`][lib], runnable with `cargo test` from
+`apps/desktop/src-tauri`.
+
+`just test` runs the frontend suite. The full IPC path with the real ACL belongs in the
 end-to-end suite rather than a mock-runtime unit test: the mock runtime cannot
 reproduce the build-time resolved ACL, so it would not faithfully exercise a
 command.

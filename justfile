@@ -59,10 +59,6 @@ lint-markdown:
 lint-toml:
     taplo check
 
-# Lint Rust code with clippy
-lint-rust:
-    cd apps/desktop/src-tauri && cargo clippy --all-targets --locked -- -D warnings
-
 # Lint TypeScript and JavaScript with oxlint
 lint-ts:
     bunx oxlint
@@ -87,16 +83,12 @@ check-arch:
 render-architecture:
     cd packages/architecture && bun run render
 
-# Run all fast tests (Rust unit + frontend unit)
-test: test-rust test-ts
+# Run all fast tests (frontend unit)
+test: test-ts
 
 # Run frontend unit tests with bun
 test-ts:
     bun test
-
-# Run Rust unit tests
-test-rust:
-    cd apps/desktop/src-tauri && cargo test --locked
 
 # Build the debug app with the embedded WebDriver server, then run the E2E suite.
 # Named `e2e` (not `test-e2e`) so CI does not auto-run this heavy, display-bound

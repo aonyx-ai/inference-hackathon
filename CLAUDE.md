@@ -20,7 +20,7 @@ building a demo of a better interface for scoping agentic work.
 - Never commit directly to `main`, always create a branch or worktree.
 - Every commit should be a logical unit of change.
 - Every commit must build and pass all checks. Use `just` recipes for
-  verification (e.g. `just test-rust`, `just lint-rust`, `just pre-commit`).
+  verification (e.g. `just test-ts`, `just lint-ts`, `just pre-commit`).
 - Fixes and refactoring should be in separate commits from features.
 - Each pull request should have one primary commit with a well-crafted
   message — this is what lands in the Git history. Follow-up fixups within
