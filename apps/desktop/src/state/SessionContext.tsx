@@ -17,6 +17,7 @@ import { findArtifact } from "@inference-hackathon/core";
 import {
   askOrchestrator,
   createDomainArtifact,
+  createTaskTitle,
   formatSurfaceContext,
   research,
 } from "../api/orchestrator";
@@ -107,7 +108,8 @@ export function SessionProvider({
     );
     setSession((current) => ({
       ...current,
-      // The opening message states the task, so it becomes the session goal.
+      // The opening message states the task, so it seeds the session goal. It
+      // shows verbatim at first, then the namer swaps in a short title below.
       goal: current.goal || text,
       conversation: appendMessage(current.conversation, userMessage),
     }));
@@ -118,6 +120,19 @@ export function SessionProvider({
     // can fail (no key, no repo) — the artifact is still drafted, just from the
     // prompt alone.
     if (isFirstMessage) {
+      // Distill the prompt into a short task title that replaces the verbatim
+      // text once it returns; on failure the prompt simply stays as the goal.
+      void createTaskTitle(text)
+        .then((title) => {
+          const trimmed = title.trim();
+          if (trimmed) {
+            setSession((current) => ({ ...current, goal: trimmed }));
+          }
+        })
+        .catch((error: unknown) => {
+          console.error("Task title generation failed:", error);
+        });
+
       setResearchPending(true);
       setDomainPending(true);
       void research(text)

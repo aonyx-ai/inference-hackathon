@@ -8,6 +8,12 @@ export {
   type DomainArtifactOutput,
 } from "./domain.ts";
 export {
+  taskNamer,
+  generateTaskTitle,
+  TaskTitleSchema,
+  type TaskTitleOutput,
+} from "./title.ts";
+export {
   domainAgent,
   domainEditSchema,
   withGraphContext,
@@ -37,4 +43,5 @@ export type {
   DomainChatRequest,
   OrchestratorChatRequest,
   RepoResearchRequest,
+  TaskTitleRequest,
 } from "./server.ts";
