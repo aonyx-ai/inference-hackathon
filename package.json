@@ -1,0 +1,17 @@
+{
+  "name": "inference-hackathon",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@typescript/native-preview": "7.0.0-dev.20260613.1",
+    "oxfmt": "^0.54.0",
+    "oxlint": "^1.69.0",
+    "typescript": "^5.9.0"
+  }
+}

@@ -1,2 +1,12 @@
 # Cache for Prettier 4
 .prettiercache
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Logs
+*.log

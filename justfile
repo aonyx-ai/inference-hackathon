@@ -5,14 +5,25 @@ set shell := ["flox", "activate", "--", "sh", "-cu"]
 default:
     @just --list
 
+# Install JavaScript dependencies
+install:
+    bun install
+
 # Run a subset of checks as pre-commit hooks
 pre-commit:
     #!/usr/bin/env -S parallel --shebang --ungroup --jobs {{ num_cpus() }}
     just prettier true
     just format-toml true
+    just format-ts true
+    just lint-ts
+    just check-types
     just lint-github-actions
     just lint-markdown
     just lint-yaml
+
+# Type-check all packages with the native (Go) TypeScript compiler
+check-types:
+    bunx tsgo
 
 # Format JSON files
 format-json fix="false": (prettier fix "{json,json5}")
@@ -23,6 +34,10 @@ format-markdown fix="false": (prettier fix "md")
 # Format TOML files
 format-toml fix="false":
     taplo fmt {{ if fix != "true" { "--diff" } else { "" } }}
+
+# Format TypeScript and JavaScript with oxfmt (prettier owns JSON/YAML/Markdown)
+format-ts fix="false":
+    bunx oxfmt --ignore-path .gitignore {{ if fix != "true" { "--check" } else { "" } }} '**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}'
 
 # Format YAML files
 format-yaml fix="false": (prettier fix "{yaml,yml}")
@@ -39,9 +54,17 @@ lint-markdown:
 lint-toml:
     taplo check
 
+# Lint TypeScript and JavaScript with oxlint
+lint-ts:
+    bunx oxlint
+
 # Lint YAML files
 lint-yaml:
     yamllint .
+
+# Run tests with bun
+test-ts:
+    bun test
 
 # Auto-format files with prettier
 prettier fix="false" extension="*":
