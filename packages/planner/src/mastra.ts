@@ -7,6 +7,7 @@ import { domainAgent } from "./domain-agent.ts";
 import { intakeWorkflow } from "./intake.ts";
 import { orchestrator } from "./orchestrator.ts";
 import { orchestratorReviewer } from "./orchestrator-review.ts";
+import { planSynthesizer } from "./plan.ts";
 import { taskNamer } from "./title.ts";
 
 /**
@@ -23,5 +24,6 @@ export const mastra = new Mastra({
     taskNamer,
     architectureModeler,
     architecture: architectureAgent,
+    planSynthesizer,
   },
 });

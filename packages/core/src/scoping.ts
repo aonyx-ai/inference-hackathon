@@ -159,6 +159,26 @@ export interface Artifact {
   openQuestion?: string;
 }
 
+/** One concrete move in the implementation plan, drawn from the artifact diffs. */
+export interface PlanStep {
+  /** A short imperative title, e.g. "Add the ExportJob aggregate". */
+  title: string;
+  /** A sentence or two saying what to do and which artifact it comes from. */
+  detail: string;
+}
+
+/**
+ * The textual plan the synthesizer writes once the developer is done shaping the
+ * artifacts. It reads the diffs across every surface together and turns them
+ * into an ordered set of steps a coding agent (or the developer) can act on.
+ */
+export interface Plan {
+  /** A short overview of what is being built and why. */
+  overview: string;
+  /** The implementation steps, sequenced the way you'd build them. */
+  steps: PlanStep[];
+}
+
 /** A question an agent raised up to the orchestrator for the developer. */
 export interface Decision {
   id: string;
@@ -207,6 +227,11 @@ export interface Session {
   decisions: Decision[];
   /** A time-ordered log of what the agents did, surfaced in the feed. */
   activity?: ActivityEvent[];
+  /**
+   * The synthesized implementation plan, once the developer marks the scoping
+   * done. Absent until then; regenerating replaces it.
+   */
+  plan?: Plan;
 }
 
 /** A chat message or an activity event, ready to render in the feed. */

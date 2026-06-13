@@ -56,6 +56,39 @@ test("clicking an agent question opens that artifact's screen and back returns",
   ).toBeInTheDocument();
 });
 
+test("renders the synthesized plan below the deck once one is present", () => {
+  renderWithProviders(<App />, {
+    initialSession: {
+      ...sampleSession,
+      plan: {
+        overview: "Add tracked PDF export, backed by a render queue.",
+        steps: [
+          {
+            title: "Add the ExportJob aggregate",
+            detail: "From the domain model.",
+          },
+        ],
+      },
+    },
+  });
+
+  // The orchestrator decides when scoping is done, so there is no button — the
+  // plan simply reads out below the deck once it has been synthesized.
+  expect(screen.getByRole("heading", { name: "Plan" })).toBeInTheDocument();
+  expect(
+    screen.getByRole("heading", { name: "Add the ExportJob aggregate" }),
+  ).toBeInTheDocument();
+});
+
+test("shows no plan section until one has been synthesized", () => {
+  // Artifacts are present, but the developer hasn't signaled they're done.
+  renderWithProviders(<App />, { initialSession: sampleSession });
+
+  expect(
+    screen.queryByRole("heading", { name: "Plan" }),
+  ).not.toBeInTheDocument();
+});
+
 test("a stale artifact surfaces a drift banner explaining the drift", () => {
   renderWithProviders(<App />, {
     route: "/artifact/a-ux",
