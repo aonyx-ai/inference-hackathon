@@ -47,6 +47,40 @@ export const sampleSession: Session = {
       resolved: false,
     },
   ],
+  activity: [
+    {
+      id: "act1",
+      kind: "research",
+      text: "Read the repository to ground the agents",
+      at: "2026-06-13T09:00:08Z",
+    },
+    {
+      id: "act2",
+      kind: "draft",
+      from: "architecture",
+      artifactId: "a-arch",
+      text: "Drafted the architecture component map",
+      at: "2026-06-13T09:01:18Z",
+    },
+    {
+      id: "act3",
+      kind: "decision-raised",
+      from: "architecture",
+      artifactId: "a-arch",
+      decisionId: "d1",
+      text: "Render PDFs synchronously in the request, or hand off to a background job queue? This decides whether we add a queue and worker.",
+      at: "2026-06-13T09:01:22Z",
+    },
+    {
+      id: "act4",
+      kind: "decision-raised",
+      from: "domain",
+      artifactId: "a-domain",
+      decisionId: "d2",
+      text: "Should an export be a first-class entity with history, or a fire-and-forget action that returns a file?",
+      at: "2026-06-13T09:01:27Z",
+    },
+  ],
   artifacts: [
     {
       id: "a-arch",
