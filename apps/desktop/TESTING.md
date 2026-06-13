@@ -9,14 +9,15 @@ Two fast, hermetic layers run on every change:
 
 - **Rust** — `just test-rust` runs `cargo test` against the backend. The `greet`
   command is covered by a direct unit test in [`src-tauri/src/lib.rs`][lib].
-- **Frontend** — `just test-ts` runs `bun test`. [`src/App.test.tsx`][apptest]
-  renders the React UI with [happy-dom][happy-dom] and [Testing Library][tl],
-  mocking the Tauri IPC layer via `@tauri-apps/api/mocks`.
+- **Frontend** — `just test-ts` runs `bun test`. The frontend tests render
+  React components with [happy-dom][happy-dom] and [Testing Library][tl];
+  `@tauri-apps/api/mocks` is available to mock the Tauri IPC layer when a
+  component calls a command.
 
-`just test` runs both. The full IPC path with the real ACL is intentionally left
-to the end-to-end suite below — the mock runtime cannot reproduce the
-build-time resolved ACL, so a mock-runtime IPC test would not faithfully
-exercise a command.
+`just test` runs both. The full IPC path with the real ACL belongs in the
+end-to-end suite rather than a mock-runtime unit test: the mock runtime cannot
+reproduce the build-time resolved ACL, so it would not faithfully exercise a
+command.
 
 ## Agent-Driven Testing
 
@@ -67,19 +68,16 @@ The available tools are `take_screenshot`, `query_page`, `click`, `type_text`,
 
 ### Example Agent Loop
 
-A minimal end-to-end check against the default UI (the Greet form):
-
-1. `take_screenshot` — confirm the window rendered and capture the baseline.
-2. `type_text` — focus the name input and type a name (for example `Tauri`).
-3. `click` — click the Greet button.
-4. `take_screenshot` — confirm the greeting (`Hello, Tauri! ...`) is rendered.
+The tools compose into a screenshot-act-screenshot loop: capture the window,
+drive it (click, type, navigate, evaluate JavaScript), and screenshot again to
+confirm the result. This works against whatever the app currently renders.
 
 ## End-to-End Tests
 
-The end-to-end suite drives the **real** webview against the **real** Rust
-backend. It types a name into the Name field, clicks Greet, and asserts that the
-greeting produced by the actual `greet` command renders in the page —
-exercising the full IPC path, ACL included. There is no mocking.
+The end-to-end suite drives the **real** webview through the embedded WebDriver
+server, exercising the running app end to end with no mocking. Specs live in
+`e2e/specs/` and interact with the app through standard WebdriverIO selectors
+and assertions.
 
 ### Why This Setup
 
@@ -146,7 +144,6 @@ debug app, and runs the suite under `xvfb` for a headless display. A macOS CI
 runner is intentionally omitted — the macOS value is fast local iteration, not a
 CI gate.
 
-[apptest]: ./src/App.test.tsx
 [cc]: https://docs.anthropic.com/en/docs/claude-code
 [ci]: ../../.github/workflows/e2e.yml
 [conf]: ./e2e/wdio.conf.ts

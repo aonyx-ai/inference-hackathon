@@ -16,3 +16,5 @@ export interface InferenceResponse {
 export function greet(name: string): string {
   return `hello from @inference-hackathon/core, ${name}`;
 }
+
+export * from "./scoping";
