@@ -1,5 +1,6 @@
 import type { Author, ChatMessage } from "@inference-hackathon/core";
 import { artifactKindLabel } from "@inference-hackathon/core";
+import { Markdown } from "./Markdown";
 
 export function authorLabel(author: Author): string {
   if (author === "user") return "You";
@@ -13,7 +14,9 @@ export function Message({ message }: { message: ChatMessage }) {
   return (
     <li className={`message ${mine ? "message--mine" : "message--theirs"}`}>
       <span className="message__author">{authorLabel(message.author)}</span>
-      <p className="message__text">{message.text}</p>
+      <div className="message__text">
+        <Markdown>{message.text}</Markdown>
+      </div>
     </li>
   );
 }

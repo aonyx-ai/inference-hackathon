@@ -174,6 +174,141 @@ button {
   color: #fff;
 }
 
+/* ---- Rendered Markdown (agent replies, anywhere prose appears) ----------- */
+
+/* Hug the bubble: the first and last blocks shed their outer margins so the
+   padding does the spacing. */
+.markdown > :first-child {
+  margin-top: 0;
+}
+
+.markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown p {
+  margin: 0.5em 0;
+}
+
+.markdown ul,
+.markdown ol {
+  margin: 0.5em 0;
+  padding-left: 1.4em;
+}
+
+.markdown li + li {
+  margin-top: 0.2em;
+}
+
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4 {
+  margin: 0.8em 0 0.4em;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.markdown h1 {
+  font-size: 1.35em;
+}
+
+.markdown h2 {
+  font-size: 1.2em;
+}
+
+.markdown h3 {
+  font-size: 1.08em;
+}
+
+.markdown h4 {
+  font-size: 1em;
+}
+
+.markdown a {
+  color: var(--accent-ink);
+  text-underline-offset: 2px;
+}
+
+.markdown strong {
+  font-weight: 600;
+}
+
+.markdown code {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  padding: 0.05em 0.35em;
+}
+
+.markdown pre {
+  margin: 0.6em 0;
+  padding: 10px 12px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-strong);
+  overflow-x: auto;
+}
+
+.markdown pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.9em;
+}
+
+.markdown blockquote {
+  margin: 0.6em 0;
+  padding: 2px 0 2px 12px;
+  border-left: 2px solid var(--border-strong);
+  color: var(--text-dim);
+}
+
+.markdown table {
+  border-collapse: collapse;
+  margin: 0.6em 0;
+  font-size: 0.92em;
+}
+
+.markdown th,
+.markdown td {
+  border: 1px solid var(--border-strong);
+  padding: 4px 8px;
+  text-align: left;
+}
+
+.markdown th {
+  background: var(--bg-inset);
+  font-weight: 600;
+}
+
+.markdown hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0.8em 0;
+}
+
+.markdown img {
+  max-width: 100%;
+}
+
+/* On the accent-filled "mine" bubble the cream code/quote tints and the dark
+   link ink read poorly, so lift them onto the terracotta. */
+.message--mine .markdown a {
+  color: #fff;
+}
+
+.message--mine .markdown code,
+.message--mine .markdown pre {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.32);
+}
+
+.message--mine .markdown blockquote {
+  border-left-color: rgba(255, 255, 255, 0.45);
+  color: rgba(255, 255, 255, 0.85);
+}
+
 /* An agent's question, surfaced in the feed — a "needs input" call to action,
    so it wears the accent (Aonyx's signal for "a human is needed here"). */
 .activity-item {
