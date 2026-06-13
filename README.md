@@ -157,3 +157,19 @@ Logic lives in platform-independent `packages/` (no Tauri, easy to test);
 [screenshot-diff]: ./screenshot-diff.png
 [tauri]: https://tauri.app
 [whale]: https://www.whale-academy.com/
+
+---
+
+Our plan ("us") vs claude code's plan mode ("them"), note failure is a false negative.
+
+```
+Run 1/5
+  us             run 1: fail  608s  $4.368  234 lines
+  them           run 1: fail  222s  $2.445  221 lines
+Run 2/5
+  us             run 2: fail  937s  $5.706  234 lines
+  them           run 2: fail  203s  $2.468  220 lines
+Run 3/5
+  us             run 3: fail  655s  $3.600  220 lines
+  them           run 3: fail  218s  $2.297  220 lines
+```
