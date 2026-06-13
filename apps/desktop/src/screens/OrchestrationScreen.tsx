@@ -84,17 +84,17 @@ export function OrchestrationScreen() {
             ))}
           </ol>
           {orchestratorPending && (
-            <p className="activity__pending">Orchestrator is thinking…</p>
+            <p className="activity__pending">Lontra is thinking…</p>
           )}
           {orchestratorReviewing && (
             <p className="activity__pending">
-              Orchestrator is reviewing the change across surfaces…
+              Lontra is reviewing the change across surfaces…
             </p>
           )}
           <Composer
             placeholder={
               started
-                ? "Reply to the orchestrator…"
+                ? "Reply to Lontra…"
                 : "Describe the task you want to scope…"
             }
             onSend={sendToOrchestrator}

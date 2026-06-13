@@ -225,10 +225,17 @@ export function SessionProvider({
       .finally(() => setPlanPending(false));
   }, []);
 
-  const sendToOrchestrator = useCallback(
-    (text: string) => {
-      const userMessage = makeMessage("user", text);
-      const isFirstMessage = sessionRef.current.conversation.length === 0;
+  // Whether the orchestrator has already fanned the work out. The orchestrator
+  // owns that decision and only makes it once per session; this guards against
+  // a second `ready` reply re-drafting everything.
+  const hasScopedRef = useRef(false);
+
+  // Fan out to the specialist agents: research the repo once, then ground the
+  // domain model and architecture loaded from disk in the task, editing the
+  // graphs already in the deck. The orchestrator triggers this when it judges
+  // the goal clear — it is no longer fired blindly on the first message.
+  const startScoping = useCallback(
+    (task: string) => {
       const domainArtifact = sessionRef.current.artifacts.find(
         (artifact) =>
           artifact.kind === "domain" && artifact.body.type === "graph",
@@ -237,6 +244,151 @@ export function SessionProvider({
         (artifact) =>
           artifact.kind === "architecture" && artifact.body.type === "graph",
       );
+
+      // Research can fail (no key, no repo) — each surface still proceeds from
+      // the task alone.
+      const researchEvent = makeActivity(
+        "research",
+        "Reading the repository with Nemotron…",
+        { pending: true },
+      );
+      addActivity(researchEvent);
+      setResearchPending(true);
+      const repoContext = research(task)
+        .then((context) => {
+          patchActivity(researchEvent.id, {
+            pending: false,
+            text: "Read the repository to ground the agents",
+          });
+          return context;
+        })
+        .catch((error: unknown) => {
+          console.error("Repo research failed:", error);
+          patchActivity(researchEvent.id, {
+            pending: false,
+            text: "Repository research didn't complete",
+          });
+          return undefined;
+        })
+        .finally(() => setResearchPending(false));
+
+      // Domain: the model loaded from disk, so the task grounds and edits the
+      // graph already in the deck rather than drafting a new one.
+      if (domainArtifact && domainArtifact.body.type === "graph") {
+        const graph = domainArtifact.body;
+        const artifactId = domainArtifact.id;
+        const draftEvent = makeActivity(
+          "draft",
+          "Grounding the domain model in the task…",
+          { pending: true, from: "domain", artifactId },
+        );
+        addActivity(draftEvent);
+        setArtifactPending(artifactId, true);
+        void repoContext
+          .then((context) =>
+            context ? formatSurfaceContext(context, "domain") : undefined,
+          )
+          .then((domainContext) => {
+            const request =
+              (domainContext ? `${domainContext}\n\n` : "") +
+              `The developer's task: ${task}\n\nUpdate the domain model to reflect this task.`;
+            return askDomainAgent(graph, [makeMessage("user", request)]);
+          })
+          .then((result) => {
+            setSession((current) => ({
+              ...current,
+              artifacts: current.artifacts.map(
+                (item): Artifact =>
+                  item.id === artifactId
+                    ? {
+                        ...item,
+                        body: result.body,
+                        status: "ready",
+                        conversation: appendMessage(
+                          item.conversation,
+                          makeMessage("domain", result.text),
+                        ),
+                      }
+                    : item,
+              ),
+            }));
+            patchActivity(draftEvent.id, {
+              pending: false,
+              text: "Updated the domain model to reflect the task",
+            });
+          })
+          .catch((error: unknown) => {
+            console.error("Grounding the domain artifact failed:", error);
+            patchActivity(draftEvent.id, {
+              pending: false,
+              text: "Couldn't update the domain model",
+            });
+          })
+          .finally(() => setArtifactPending(artifactId, false));
+      }
+
+      // Architecture: also loaded from disk, so the same research grounds an
+      // edit of the dependency graph already in the deck.
+      if (architectureArtifact && architectureArtifact.body.type === "graph") {
+        const graph = architectureArtifact.body;
+        const artifactId = architectureArtifact.id;
+        const draftEvent = makeActivity(
+          "draft",
+          "Grounding the architecture in the task…",
+          { pending: true, from: "architecture", artifactId },
+        );
+        addActivity(draftEvent);
+        setArtifactPending(artifactId, true);
+        void repoContext
+          .then((context) =>
+            context ? formatSurfaceContext(context, "architecture") : undefined,
+          )
+          .then((archContext) => {
+            const request =
+              (archContext ? `${archContext}\n\n` : "") +
+              `The developer's task: ${task}\n\nUpdate the architecture to reflect this task.`;
+            return askArchitectureAgent(graph, [makeMessage("user", request)]);
+          })
+          .then((result) => {
+            setSession((current) => ({
+              ...current,
+              artifacts: current.artifacts.map(
+                (item): Artifact =>
+                  item.id === artifactId
+                    ? {
+                        ...item,
+                        body: result.body,
+                        status: "ready",
+                        conversation: appendMessage(
+                          item.conversation,
+                          makeMessage("architecture", result.text),
+                        ),
+                      }
+                    : item,
+              ),
+            }));
+            patchActivity(draftEvent.id, {
+              pending: false,
+              text: "Updated the architecture to reflect the task",
+            });
+          })
+          .catch((error: unknown) => {
+            console.error("Grounding the architecture artifact failed:", error);
+            patchActivity(draftEvent.id, {
+              pending: false,
+              text: "Couldn't update the architecture",
+            });
+          })
+          .finally(() => setArtifactPending(artifactId, false));
+      }
+    },
+    [setArtifactPending, addActivity, patchActivity],
+  );
+
+  const sendToOrchestrator = useCallback(
+    (text: string) => {
+      const userMessage = makeMessage("user", text);
+      const isFirstMessage = sessionRef.current.conversation.length === 0;
       const conversation = appendMessage(
         sessionRef.current.conversation,
         userMessage,
@@ -262,169 +414,31 @@ export function SessionProvider({
           .catch((error: unknown) => {
             console.error("Task title generation failed:", error);
           });
-
-        // Research the repo once; its per-surface context grounds both the
-        // domain edit and the architecture draft. Research can fail (no key, no
-        // repo) — each still proceeds from the task alone.
-        const researchEvent = makeActivity(
-          "research",
-          "Reading the repository with Nemotron…",
-          { pending: true },
-        );
-        addActivity(researchEvent);
-        setResearchPending(true);
-        const repoContext = research(text)
-          .then((context) => {
-            patchActivity(researchEvent.id, {
-              pending: false,
-              text: "Read the repository to ground the agents",
-            });
-            return context;
-          })
-          .catch((error: unknown) => {
-            console.error("Repo research failed:", error);
-            patchActivity(researchEvent.id, {
-              pending: false,
-              text: "Repository research didn't complete",
-            });
-            return undefined;
-          })
-          .finally(() => setResearchPending(false));
-
-        // Domain: the model loaded from disk, so the prompt grounds and edits
-        // the graph already in the deck rather than drafting a new one.
-        if (domainArtifact && domainArtifact.body.type === "graph") {
-          const graph = domainArtifact.body;
-          const artifactId = domainArtifact.id;
-          const draftEvent = makeActivity(
-            "draft",
-            "Grounding the domain model in the task…",
-            { pending: true, from: "domain", artifactId },
-          );
-          addActivity(draftEvent);
-          setArtifactPending(artifactId, true);
-          void repoContext
-            .then((context) =>
-              context ? formatSurfaceContext(context, "domain") : undefined,
-            )
-            .then((domainContext) => {
-              const request =
-                (domainContext ? `${domainContext}\n\n` : "") +
-                `The developer's task: ${text}\n\nUpdate the domain model to reflect this task.`;
-              return askDomainAgent(graph, [makeMessage("user", request)]);
-            })
-            .then((result) => {
-              setSession((current) => ({
-                ...current,
-                artifacts: current.artifacts.map(
-                  (item): Artifact =>
-                    item.id === artifactId
-                      ? {
-                          ...item,
-                          body: result.body,
-                          status: "ready",
-                          conversation: appendMessage(
-                            item.conversation,
-                            makeMessage("domain", result.text),
-                          ),
-                        }
-                      : item,
-                ),
-              }));
-              patchActivity(draftEvent.id, {
-                pending: false,
-                text: "Updated the domain model to reflect the task",
-              });
-            })
-            .catch((error: unknown) => {
-              console.error("Grounding the domain artifact failed:", error);
-              patchActivity(draftEvent.id, {
-                pending: false,
-                text: "Couldn't update the domain model",
-              });
-            })
-            .finally(() => setArtifactPending(artifactId, false));
-        }
-
-        // Architecture: also loaded from disk, so the same research grounds an
-        // edit of the dependency graph already in the deck.
-        if (
-          architectureArtifact &&
-          architectureArtifact.body.type === "graph"
-        ) {
-          const graph = architectureArtifact.body;
-          const artifactId = architectureArtifact.id;
-          const draftEvent = makeActivity(
-            "draft",
-            "Grounding the architecture in the task…",
-            { pending: true, from: "architecture", artifactId },
-          );
-          addActivity(draftEvent);
-          setArtifactPending(artifactId, true);
-          void repoContext
-            .then((context) =>
-              context
-                ? formatSurfaceContext(context, "architecture")
-                : undefined,
-            )
-            .then((archContext) => {
-              const request =
-                (archContext ? `${archContext}\n\n` : "") +
-                `The developer's task: ${text}\n\nUpdate the architecture to reflect this task.`;
-              return askArchitectureAgent(graph, [
-                makeMessage("user", request),
-              ]);
-            })
-            .then((result) => {
-              setSession((current) => ({
-                ...current,
-                artifacts: current.artifacts.map(
-                  (item): Artifact =>
-                    item.id === artifactId
-                      ? {
-                          ...item,
-                          body: result.body,
-                          status: "ready",
-                          conversation: appendMessage(
-                            item.conversation,
-                            makeMessage("architecture", result.text),
-                          ),
-                        }
-                      : item,
-                ),
-              }));
-              patchActivity(draftEvent.id, {
-                pending: false,
-                text: "Updated the architecture to reflect the task",
-              });
-            })
-            .catch((error: unknown) => {
-              console.error(
-                "Grounding the architecture artifact failed:",
-                error,
-              );
-              patchActivity(draftEvent.id, {
-                pending: false,
-                text: "Couldn't update the architecture",
-              });
-            })
-            .finally(() => setArtifactPending(artifactId, false));
-        }
       }
 
       setOrchestratorPending(true);
       void askOrchestrator(conversation)
-        .then((reply) => {
+        .then(({ text: replyText, ready, readyForPlan }) => {
           setSession((current) => ({
             ...current,
             conversation: appendMessage(
               current.conversation,
-              makeMessage("orchestrator", reply.text),
+              makeMessage("orchestrator", replyText),
             ),
           }));
-          // The orchestrator decides when scoping is done; when it says so, the
-          // plan synthesizes off the artifacts on hand.
-          if (reply.readyForPlan) synthesizePlanFromArtifacts();
+          // The orchestrator owns the fan-out: it kicks the artifact agents off
+          // the first time it judges the goal clear, grounding them in the
+          // developer's opening prompt.
+          if (ready && !hasScopedRef.current) {
+            hasScopedRef.current = true;
+            const task =
+              conversation.find((message) => message.author === "user")?.text ??
+              text;
+            startScoping(task);
+          }
+          // And once the developer signals they are satisfied, it draws the
+          // scoped artifacts together into a plan.
+          if (readyForPlan) synthesizePlanFromArtifacts();
         })
         .catch((error: unknown) => {
           const message =
@@ -439,12 +453,7 @@ export function SessionProvider({
         })
         .finally(() => setOrchestratorPending(false));
     },
-    [
-      setArtifactPending,
-      addActivity,
-      patchActivity,
-      synthesizePlanFromArtifacts,
-    ],
+    [startScoping, synthesizePlanFromArtifacts],
   );
 
   // A snapshot of one artifact in the shape the orchestrator's review reasons
