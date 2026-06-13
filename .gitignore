@@ -8,5 +8,9 @@ node_modules/
 dist/
 *.tsbuildinfo
 
+# Rust / Tauri build artifacts
+target/
+gen/schemas/
+
 # Logs
 *.log

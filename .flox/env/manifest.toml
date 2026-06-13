@@ -6,6 +6,76 @@ schema-version = "1.12.0"
 bun.pkg-path = "bun"
 nodejs.pkg-path = "nodejs"
 
+# Rust toolchain for the Tauri backend. Rustup installs rustc, cargo, clippy,
+# rust-analyzer, and rustfmt per the pinned rust-toolchain.toml.
+rustup.pkg-path = "rustup"
+libiconv.pkg-path = "libiconv"
+libiconv.systems = ["aarch64-darwin", "x86_64-darwin"]
+clang.pkg-path = "clang"
+clang.systems = ["aarch64-darwin", "x86_64-darwin"]
+gcc.pkg-path = "gcc"
+gcc.systems = ["aarch64-linux", "x86_64-linux"]
+# Source for the standard library, used by rust-analyzer for diagnostics.
+rust-lib-src.pkg-group = "rust-toolchain"
+rust-lib-src.pkg-path = "rustPlatform.rustLibSrc"
+
+# Tauri build dependencies. On macOS these ship with the system; on Linux they
+# come from nixpkgs and are only installed there. `outputs = "all"` is required
+# so each package's `dev` output — which holds its pkg-config `.pc` files — is
+# placed on PKG_CONFIG_PATH; nixpkgs then propagates the transitive GTK leaves
+# (cairo, pango, glib, epoxy, ...). This mirrors Tauri's documented Nix
+# buildInputs set. See https://v2.tauri.app/start/prerequisites/#linux
+pkg-config.pkg-path = "pkg-config"
+pkg-config.systems = ["aarch64-linux", "x86_64-linux"]
+gobject-introspection.pkg-path = "gobject-introspection"
+gobject-introspection.systems = ["aarch64-linux", "x86_64-linux"]
+gobject-introspection.outputs = "all"
+glib.pkg-path = "glib"
+glib.systems = ["aarch64-linux", "x86_64-linux"]
+glib.outputs = "all"
+gtk3.pkg-path = "gtk3"
+gtk3.systems = ["aarch64-linux", "x86_64-linux"]
+gtk3.outputs = "all"
+cairo.pkg-path = "cairo"
+cairo.systems = ["aarch64-linux", "x86_64-linux"]
+cairo.outputs = "all"
+pango.pkg-path = "pango"
+pango.systems = ["aarch64-linux", "x86_64-linux"]
+pango.outputs = "all"
+gdk-pixbuf.pkg-path = "gdk-pixbuf"
+gdk-pixbuf.systems = ["aarch64-linux", "x86_64-linux"]
+gdk-pixbuf.outputs = "all"
+atk.pkg-path = "atk"
+atk.systems = ["aarch64-linux", "x86_64-linux"]
+atk.outputs = "all"
+at-spi2-atk.pkg-path = "at-spi2-atk"
+at-spi2-atk.systems = ["aarch64-linux", "x86_64-linux"]
+at-spi2-atk.outputs = "all"
+harfbuzz.pkg-path = "harfbuzz"
+harfbuzz.systems = ["aarch64-linux", "x86_64-linux"]
+harfbuzz.outputs = "all"
+webkitgtk_4_1.pkg-path = "webkitgtk_4_1"
+webkitgtk_4_1.systems = ["aarch64-linux", "x86_64-linux"]
+webkitgtk_4_1.outputs = "all"
+libsoup_3.pkg-path = "libsoup_3"
+libsoup_3.systems = ["aarch64-linux", "x86_64-linux"]
+libsoup_3.outputs = "all"
+librsvg.pkg-path = "librsvg"
+librsvg.systems = ["aarch64-linux", "x86_64-linux"]
+librsvg.outputs = "all"
+# librsvg and gdk-pixbuf both ship a gdk-pixbuf loaders.cache; let librsvg win
+# (a lower priority value takes precedence). The cache is irrelevant to builds.
+librsvg.priority = 4
+libayatana-appindicator.pkg-path = "libayatana-appindicator"
+libayatana-appindicator.systems = ["aarch64-linux", "x86_64-linux"]
+libayatana-appindicator.outputs = "all"
+openssl.pkg-path = "openssl"
+openssl.systems = ["aarch64-linux", "x86_64-linux"]
+openssl.outputs = "all"
+xdotool.pkg-path = "xdotool"
+xdotool.systems = ["aarch64-linux", "x86_64-linux"]
+xdotool.outputs = "all"
+
 # Local development tools
 git.pkg-path = "git"
 git.outputs = "all"
