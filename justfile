@@ -86,6 +86,13 @@ test-ts:
 test-rust:
     cd apps/desktop/src-tauri && cargo test --locked
 
+# Build the debug app with the embedded WebDriver server, then run the E2E suite.
+# Named `e2e` (not `test-e2e`) so CI does not auto-run this heavy, display-bound
+# suite in the headless recipe matrix; it has its own workflow with a display.
+e2e:
+    cd apps/desktop && bun run tauri build --debug --no-bundle -- --features webdriver
+    cd apps/desktop && bun run e2e
+
 # Run the Tauri desktop app in development
 tauri-dev:
     cd apps/desktop && bun run tauri dev

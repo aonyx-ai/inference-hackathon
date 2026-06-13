@@ -3,6 +3,7 @@ extends: default
 
 ignore: |
   .flox/cache/*
+  node_modules/
 
 rules:
   comments:

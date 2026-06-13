@@ -14,11 +14,19 @@ pub fn run() {
     // Dev-only tooling plugins — never compiled into release builds.
     #[cfg(debug_assertions)]
     {
+        // Agent automation: lets AI agents drive the running app over a socket.
         builder = builder.plugin(tauri_plugin_mcp::init_with_config(
             tauri_plugin_mcp::PluginConfig::new("Inference Hackathon".to_string())
                 .start_socket_server(true)
                 .socket_path(std::path::PathBuf::from("/tmp/tauri-mcp.sock")),
         ));
+
+        // The embedded WebDriver server (for E2E) is additionally gated behind
+        // the `webdriver` feature so it is only linked when running tests.
+        #[cfg(feature = "webdriver")]
+        {
+            builder = builder.plugin(tauri_plugin_webdriver::init());
+        }
     }
 
     builder
