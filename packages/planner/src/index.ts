@@ -2,12 +2,6 @@ export { intakeWorkflow } from "./intake.ts";
 export { mastra } from "./mastra.ts";
 export { orchestrator } from "./orchestrator.ts";
 export {
-  domainModeler,
-  generateDomainArtifact,
-  DomainArtifactSchema,
-  type DomainArtifactOutput,
-} from "./domain.ts";
-export {
   taskNamer,
   generateTaskTitle,
   TaskTitleSchema,
@@ -19,6 +13,7 @@ export {
   withGraphContext,
   type DomainEdit,
 } from "./domain-agent.ts";
+export { parseMermaidClassDiagram } from "./mermaid-graph.ts";
 export {
   researchRepo,
   formatSurfaceContext,
@@ -39,7 +34,6 @@ export {
 } from "./models.ts";
 export type {
   ChatTurn,
-  DomainArtifactRequest,
   DomainChatRequest,
   OrchestratorChatRequest,
   RepoResearchRequest,

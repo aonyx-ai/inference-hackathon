@@ -8,7 +8,8 @@ import { SessionProvider } from "../src/state/SessionContext";
  * Render a component inside the providers every screen depends on: a router
  * (so `useNavigate`/`useParams` work) seeded at `route`, and the session store.
  * Pass `initialSession` to seed state; without it the store starts empty, as
- * the app does.
+ * the app does. Auto-loading artifacts from the planner is off so tests never
+ * reach for the network.
  */
 export function renderWithProviders(
   ui: ReactElement,
@@ -19,7 +20,9 @@ export function renderWithProviders(
 ) {
   return render(
     <MemoryRouter initialEntries={[route]}>
-      <SessionProvider initialSession={initialSession}>{ui}</SessionProvider>
+      <SessionProvider initialSession={initialSession} autoLoad={false}>
+        {ui}
+      </SessionProvider>
     </MemoryRouter>,
   );
 }

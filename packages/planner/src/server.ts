@@ -1,8 +1,11 @@
+import { readdir, readFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
+
 import { domainEditSchema, withGraphContext } from "./domain-agent.ts";
 import { mastra } from "./mastra.ts";
-import { generateDomainArtifact } from "./domain.ts";
-import { generateTaskTitle } from "./title.ts";
+import { parseMermaidClassDiagram } from "./mermaid-graph.ts";
 import { researchRepo } from "./research.ts";
+import { generateTaskTitle } from "./title.ts";
 
 /**
  * A single turn in the chat, in the provider-agnostic shape the frontend sends.
@@ -21,13 +24,6 @@ export interface OrchestratorChatRequest {
 /** The opening prompt the namer distills into a short task title. */
 export interface TaskTitleRequest {
   prompt: string;
-}
-
-/** The goal the domain modeler scopes into the first domain artifact. */
-export interface DomainArtifactRequest {
-  goal: string;
-  /** Optional grounding from the repo-research stage, folded into the prompt. */
-  context?: string;
 }
 
 /** The current domain-model graph the agent edits, sent alongside the chat. */
@@ -53,22 +49,60 @@ const DEFAULT_RESEARCH_ROOT = process.env.RESEARCH_REPO_ROOT ?? process.cwd();
 
 const PORT = Number(process.env.PLANNER_PORT ?? 8787);
 
+// Where the codebase being scoped lives. Its artifacts are read from its
+// `docs/*.mmd` — Mermaid diagrams the codebase renders from its own model, which
+// we parse into the editable graph the deck shows. Defaults to the working dir.
+const CODEBASE_ROOT = process.env.CODEBASE_ROOT ?? process.cwd();
+const ARTIFACTS_DIR = resolve(CODEBASE_ROOT, "docs");
+
+const KINDS = ["architecture", "domain", "ux"] as const;
+const KIND_TITLES: Record<(typeof KINDS)[number], string> = {
+  architecture: "Architecture",
+  domain: "Domain Model",
+  ux: "User Experience",
+};
+
 const orchestrator = mastra.getAgent("orchestrator");
 const domain = mastra.getAgent("domain");
+
+/**
+ * Read every Mermaid artifact from the codebase's `docs` folder, parse each into
+ * a graph the deck renders and the domain agent edits, and tag it by filename.
+ * A missing folder is not an error — the codebase just has no artifacts yet.
+ */
+async function readArtifacts() {
+  let entries: string[];
+  try {
+    entries = await readdir(ARTIFACTS_DIR);
+  } catch {
+    return [];
+  }
+  const files = entries.filter((name) => name.endsWith(".mmd")).sort();
+  return Promise.all(
+    files.map(async (name) => {
+      const diagram = await readFile(join(ARTIFACTS_DIR, name), "utf8");
+      const stem = name.slice(0, -".mmd".length);
+      const kind = (KINDS as readonly string[]).includes(stem)
+        ? (stem as (typeof KINDS)[number])
+        : "domain";
+      return {
+        id: stem,
+        kind,
+        title: KIND_TITLES[kind],
+        summary: "",
+        status: "ready",
+        conversation: [],
+        body: { type: "graph", ...parseMermaidClassDiagram(diagram) },
+      };
+    }),
+  );
+}
 
 function hasMessages(value: unknown): value is { messages: ChatTurn[] } {
   return (
     typeof value === "object" &&
     value !== null &&
     Array.isArray((value as { messages?: unknown }).messages)
-  );
-}
-
-function isDomainRequest(value: unknown): value is DomainArtifactRequest {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    typeof (value as { goal?: unknown }).goal === "string"
   );
 }
 
@@ -146,6 +180,17 @@ const server = Bun.serve({
       return json({ ok: true });
     }
 
+    if (request.method === "GET" && url.pathname === "/api/artifacts") {
+      try {
+        return json({ artifacts: await readArtifacts() });
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Unknown error";
+        console.error("Reading artifacts failed:", message);
+        return json({ error: message }, 502);
+      }
+    }
+
     if (
       request.method === "POST" &&
       url.pathname === "/api/orchestrator/chat"
@@ -169,33 +214,6 @@ const server = Bun.serve({
         const message =
           error instanceof Error ? error.message : "Unknown error";
         console.error("Orchestrator generation failed:", message);
-        return json({ error: message }, 502);
-      }
-    }
-
-    // The orchestrator's first prompt spins up a domain artifact: the domain
-    // modeler scopes the goal into a fresh graph the deck renders.
-    if (
-      request.method === "POST" &&
-      url.pathname === "/api/orchestrator/domain"
-    ) {
-      let body: unknown;
-      try {
-        body = await request.json();
-      } catch {
-        return json({ error: "Invalid JSON body" }, 400);
-      }
-      if (!isDomainRequest(body)) {
-        return json({ error: "Expected { goal: string }" }, 400);
-      }
-
-      try {
-        const artifact = await generateDomainArtifact(body.goal, body.context);
-        return json(artifact);
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Unknown error";
-        console.error("Domain artifact generation failed:", message);
         return json({ error: message }, 502);
       }
     }

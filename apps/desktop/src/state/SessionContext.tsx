@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -16,8 +17,8 @@ import type {
 import { findArtifact } from "@inference-hackathon/core";
 import {
   askOrchestrator,
-  createDomainArtifact,
   createTaskTitle,
+  fetchArtifacts,
   formatSurfaceContext,
   research,
 } from "../api/orchestrator";
@@ -38,8 +39,6 @@ interface SessionContextValue {
   orchestratorPending: boolean;
   /** True while the research agents are reading the repo to ground the artifacts. */
   researchPending: boolean;
-  /** True while the domain modeler is drafting the first artifact. */
-  domainPending: boolean;
   /** Send a message to the orchestrator on the orchestration screen. */
   sendToOrchestrator: (text: string) => void;
   /** Send a message to a single artifact's agent on its screen. */
@@ -70,15 +69,17 @@ function appendMessage(messages: ChatMessage[], message: ChatMessage) {
 export function SessionProvider({
   children,
   initialSession = emptySession,
+  autoLoad = true,
 }: {
   children: ReactNode;
   /** Seed state, used by tests; the app starts from an empty session. */
   initialSession?: Session;
+  /** Load artifacts from the planner on mount; tests turn this off. */
+  autoLoad?: boolean;
 }) {
   const [session, setSession] = useState<Session>(initialSession);
   const [orchestratorPending, setOrchestratorPending] = useState(false);
   const [researchPending, setResearchPending] = useState(false);
-  const [domainPending, setDomainPending] = useState(false);
   // Ids of artifacts whose agent is mid-reply, so each screen can show its own
   // pending state without blocking the others.
   const [pendingArtifacts, setPendingArtifacts] = useState<Set<string>>(
@@ -99,86 +100,133 @@ export function SessionProvider({
   const sessionRef = useRef(session);
   sessionRef.current = session;
 
-  const sendToOrchestrator = useCallback((text: string) => {
-    const userMessage = makeMessage("user", text);
-    const isFirstMessage = sessionRef.current.conversation.length === 0;
-    const conversation = appendMessage(
-      sessionRef.current.conversation,
-      userMessage,
-    );
-    setSession((current) => ({
-      ...current,
-      // The opening message states the task, so it seeds the session goal. It
-      // shows verbatim at first, then the namer swaps in a short title below.
-      goal: current.goal || text,
-      conversation: appendMessage(current.conversation, userMessage),
-    }));
+  // The artifacts live on disk in the codebase being scoped; the planner reads
+  // them and we pull them into the deck when the session opens. From there the
+  // domain artifact is iterated on through its own agent.
+  useEffect(() => {
+    if (!autoLoad) return;
+    void fetchArtifacts()
+      .then((artifacts) => {
+        setSession((current) => ({ ...current, artifacts }));
+      })
+      .catch((error: unknown) => {
+        console.error("Loading artifacts failed:", error);
+      });
+  }, [autoLoad]);
 
-    // The opening prompt also kicks off the first artifact. First a group of
-    // research agents reads the repo to learn how it works; their domain context
-    // then grounds the domain modeler, whose graph lands in the deck. Research
-    // can fail (no key, no repo) — the artifact is still drafted, just from the
-    // prompt alone.
-    if (isFirstMessage) {
-      // Distill the prompt into a short task title that replaces the verbatim
-      // text once it returns; on failure the prompt simply stays as the goal.
-      void createTaskTitle(text)
-        .then((title) => {
-          const trimmed = title.trim();
-          if (trimmed) {
-            setSession((current) => ({ ...current, goal: trimmed }));
-          }
-        })
-        .catch((error: unknown) => {
-          console.error("Task title generation failed:", error);
-        });
+  const sendToOrchestrator = useCallback(
+    (text: string) => {
+      const userMessage = makeMessage("user", text);
+      const isFirstMessage = sessionRef.current.conversation.length === 0;
+      const domainArtifact = sessionRef.current.artifacts.find(
+        (artifact) =>
+          artifact.kind === "domain" && artifact.body.type === "graph",
+      );
+      const conversation = appendMessage(
+        sessionRef.current.conversation,
+        userMessage,
+      );
+      setSession((current) => ({
+        ...current,
+        // The opening message states the task, so it seeds the session goal. It
+        // shows verbatim at first, then the namer swaps in a short title below.
+        goal: current.goal || text,
+        conversation: appendMessage(current.conversation, userMessage),
+      }));
 
-      setResearchPending(true);
-      setDomainPending(true);
-      void research(text)
-        .then((context) => formatSurfaceContext(context, "domain"))
-        .catch((error: unknown) => {
-          console.error("Repo research failed:", error);
-          return undefined;
-        })
-        .finally(() => setResearchPending(false))
-        .then((domainContext) => createDomainArtifact(text, domainContext))
-        .then((artifact) => {
+      // Distill the opening prompt into a short task title that replaces the
+      // verbatim text once it returns; on failure the prompt stays as the goal.
+      if (isFirstMessage) {
+        void createTaskTitle(text)
+          .then((title) => {
+            const trimmed = title.trim();
+            if (trimmed) {
+              setSession((current) => ({ ...current, goal: trimmed }));
+            }
+          })
+          .catch((error: unknown) => {
+            console.error("Task title generation failed:", error);
+          });
+      }
+
+      // The opening prompt grounds the artifact that loaded from disk. A group of
+      // research agents reads the repo to learn how it works; that domain context
+      // plus the task drives the domain agent, which edits the graph already in
+      // the deck. Research can fail (no key, no repo) — the edit still runs, just
+      // from the task alone.
+      if (
+        isFirstMessage &&
+        domainArtifact &&
+        domainArtifact.body.type === "graph"
+      ) {
+        const graph = domainArtifact.body;
+        const artifactId = domainArtifact.id;
+        setResearchPending(true);
+        setArtifactPending(artifactId, true);
+        void research(text)
+          .then((context) => formatSurfaceContext(context, "domain"))
+          .catch((error: unknown) => {
+            console.error("Repo research failed:", error);
+            return undefined;
+          })
+          .finally(() => setResearchPending(false))
+          .then((domainContext) => {
+            const request =
+              (domainContext ? `${domainContext}\n\n` : "") +
+              `The developer's task: ${text}\n\nUpdate the domain model to reflect this task.`;
+            return askDomainAgent(graph, [makeMessage("user", request)]);
+          })
+          .then((result) => {
+            setSession((current) => ({
+              ...current,
+              artifacts: current.artifacts.map(
+                (item): Artifact =>
+                  item.id === artifactId
+                    ? {
+                        ...item,
+                        body: result.body,
+                        status: "ready",
+                        conversation: appendMessage(
+                          item.conversation,
+                          makeMessage("domain", result.text),
+                        ),
+                      }
+                    : item,
+              ),
+            }));
+          })
+          .catch((error: unknown) => {
+            console.error("Grounding the domain artifact failed:", error);
+          })
+          .finally(() => setArtifactPending(artifactId, false));
+      }
+
+      setOrchestratorPending(true);
+      void askOrchestrator(conversation)
+        .then((reply) => {
           setSession((current) => ({
             ...current,
-            artifacts: [...current.artifacts, artifact],
+            conversation: appendMessage(
+              current.conversation,
+              makeMessage("orchestrator", reply),
+            ),
           }));
         })
         .catch((error: unknown) => {
-          console.error("Domain artifact generation failed:", error);
+          const message =
+            error instanceof Error ? error.message : "Something went wrong";
+          setSession((current) => ({
+            ...current,
+            conversation: appendMessage(
+              current.conversation,
+              makeMessage("orchestrator", `⚠️ ${message}`),
+            ),
+          }));
         })
-        .finally(() => setDomainPending(false));
-    }
-
-    setOrchestratorPending(true);
-    void askOrchestrator(conversation)
-      .then((reply) => {
-        setSession((current) => ({
-          ...current,
-          conversation: appendMessage(
-            current.conversation,
-            makeMessage("orchestrator", reply),
-          ),
-        }));
-      })
-      .catch((error: unknown) => {
-        const message =
-          error instanceof Error ? error.message : "Something went wrong";
-        setSession((current) => ({
-          ...current,
-          conversation: appendMessage(
-            current.conversation,
-            makeMessage("orchestrator", `⚠️ ${message}`),
-          ),
-        }));
-      })
-      .finally(() => setOrchestratorPending(false));
-  }, []);
+        .finally(() => setOrchestratorPending(false));
+    },
+    [setArtifactPending],
+  );
 
   const sendToArtifactAgent = useCallback(
     (artifactId: string, text: string) => {
@@ -254,7 +302,6 @@ export function SessionProvider({
       session,
       orchestratorPending,
       researchPending,
-      domainPending,
       sendToOrchestrator,
       sendToArtifactAgent,
       artifactPending,
@@ -264,7 +311,6 @@ export function SessionProvider({
       session,
       orchestratorPending,
       researchPending,
-      domainPending,
       sendToOrchestrator,
       sendToArtifactAgent,
       artifactPending,

@@ -1,9 +1,4 @@
-import type {
-  Artifact,
-  ChatMessage,
-  GraphEdge,
-  GraphNode,
-} from "@inference-hackathon/core";
+import type { Artifact, ChatMessage } from "@inference-hackathon/core";
 import { API_BASE, toTurns } from "./planner";
 
 /**
@@ -137,66 +132,21 @@ export function formatSurfaceContext(
   return lines.join("\n");
 }
 
-/** The graph the domain modeler returns, before it is dressed as an artifact. */
-interface DomainArtifactResponse {
-  title: string;
-  summary: string;
-  nodes: { id: string; label: string }[];
-  edges: { from: string; to: string; label: string }[];
-  error?: string;
-}
-
-let domainArtifactCounter = 0;
-
 /**
- * Ask the domain modeler to scope the task as a domain-model graph and return it
- * as a ready artifact. When the research stage has run, its domain context is
- * passed so the graph is grounded in the entities already in the codebase.
- * Everything the model produces is new, so each node and edge is marked as added
- * for the diff view. Throws with the server's message on failure.
+ * Load the artifacts the planner reads from the codebase on disk. The server
+ * parses each Mermaid diagram into the graph shape the UI renders, so they pass
+ * straight through. Throws with the server's message on failure.
  */
-export async function createDomainArtifact(
-  goal: string,
-  context?: string,
-): Promise<Artifact> {
-  const response = await fetch(`${API_BASE}/api/orchestrator/domain`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(context ? { goal, context } : { goal }),
-  });
-
-  const data = (await response.json()) as DomainArtifactResponse;
+export async function fetchArtifacts(): Promise<Artifact[]> {
+  const response = await fetch(`${API_BASE}/api/artifacts`);
+  const data = (await response.json()) as {
+    artifacts?: Artifact[];
+    error?: string;
+  };
   if (!response.ok) {
     throw new Error(
-      data.error ?? `Domain artifact request failed (${response.status})`,
+      data.error ?? `Artifacts request failed (${response.status})`,
     );
   }
-
-  domainArtifactCounter += 1;
-  return {
-    id: `domain-${domainArtifactCounter}`,
-    kind: "domain",
-    title: data.title,
-    summary: data.summary,
-    status: "ready",
-    conversation: [],
-    body: {
-      type: "graph",
-      nodes: data.nodes.map(
-        (node): GraphNode => ({
-          id: node.id,
-          label: node.label,
-          change: "added",
-        }),
-      ),
-      edges: data.edges.map(
-        (edge): GraphEdge => ({
-          from: edge.from,
-          to: edge.to,
-          label: edge.label,
-          change: "added",
-        }),
-      ),
-    },
-  };
+  return data.artifacts ?? [];
 }
