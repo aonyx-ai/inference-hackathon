@@ -1,0 +1,21 @@
+{
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git checkout:*)",
+      "Bash(git pull:*)",
+      "Bash(git switch:*)",
+      "Bash(just pre-commit:*)"
+    ]
+  },
+  "sandbox": {
+    "autoAllowBashIfSandboxed": true,
+    "enabled": true,
+    "filesystem": {
+      "allowWrite": [".flox/cache", ".flox/log", ".flox/run"]
+    }
+  }
+}
