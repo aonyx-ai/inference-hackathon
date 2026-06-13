@@ -42,6 +42,11 @@
   --radius: 0;
   --gap: 16px;
 
+  /* the composer's send button is fixed-width so a response box can line its
+     right edge up with the input field that sits beside the button */
+  --composer-gap: 8px;
+  --send-width: 72px;
+
   color-scheme: light;
 }
 
@@ -143,7 +148,8 @@ button {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  max-width: 88%;
+  /* match the composer input's width so responses align with the form field */
+  max-width: calc(100% - var(--send-width) - var(--composer-gap));
 }
 
 .message--mine {
@@ -211,7 +217,7 @@ button {
 
 .composer {
   display: flex;
-  gap: 8px;
+  gap: var(--composer-gap);
 }
 
 .composer__input {
@@ -239,7 +245,8 @@ button {
   font-family: var(--mono);
   font-weight: 600;
   letter-spacing: 0.02em;
-  padding: 0 18px;
+  flex: 0 0 var(--send-width);
+  padding: 0;
   border-radius: var(--radius);
   border: 1px solid var(--accent-ink);
   background: var(--accent);
