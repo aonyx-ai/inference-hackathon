@@ -1,4 +1,5 @@
 import { mastra } from "./mastra.ts";
+import { generateDomainArtifact } from "./domain.ts";
 
 /**
  * A single turn in the orchestrator chat, in the provider-agnostic shape the
@@ -14,6 +15,10 @@ export interface OrchestratorChatRequest {
   messages: ChatTurn[];
 }
 
+export interface DomainArtifactRequest {
+  goal: string;
+}
+
 const PORT = Number(process.env.PLANNER_PORT ?? 8787);
 
 const orchestrator = mastra.getAgent("orchestrator");
@@ -23,6 +28,14 @@ function isChatRequest(value: unknown): value is OrchestratorChatRequest {
     typeof value === "object" &&
     value !== null &&
     Array.isArray((value as { messages?: unknown }).messages)
+  );
+}
+
+function isDomainRequest(value: unknown): value is DomainArtifactRequest {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as { goal?: unknown }).goal === "string"
   );
 }
 
@@ -87,6 +100,31 @@ const server = Bun.serve({
         const message =
           error instanceof Error ? error.message : "Unknown error";
         console.error("Orchestrator generation failed:", message);
+        return json({ error: message }, 502);
+      }
+    }
+
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/orchestrator/domain"
+    ) {
+      let body: unknown;
+      try {
+        body = await request.json();
+      } catch {
+        return json({ error: "Invalid JSON body" }, 400);
+      }
+      if (!isDomainRequest(body)) {
+        return json({ error: "Expected { goal: string }" }, 400);
+      }
+
+      try {
+        const artifact = await generateDomainArtifact(body.goal);
+        return json(artifact);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Unknown error";
+        console.error("Domain artifact generation failed:", message);
         return json({ error: message }, 502);
       }
     }
