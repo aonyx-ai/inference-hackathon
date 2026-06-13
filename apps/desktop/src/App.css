@@ -1,26 +1,48 @@
+/* Aonyx — warm cream paper, mono type, terracotta as the one decisive accent.
+   Sharp corners, thin ink hairlines, everything in JetBrains Mono. Ported from
+   the Aonyx company demo so the prototype shares the brand's visual language. */
+
 :root {
-  --bg: #0e1116;
-  --bg-raised: #161b22;
-  --bg-inset: #0a0d12;
-  --border: #232b36;
-  --border-strong: #313c4b;
-  --text: #e6edf3;
-  --text-dim: #8b97a6;
-  --text-faint: #5b6675;
-  --accent: #4f8cff;
+  /* surfaces — warm off-white paper, lightest is most elevated */
+  --bg: #efece4;
+  --bg-raised: #fbf9f3;
+  --bg-inset: #f3f0e8;
+  --surface-3: #ffffff;
 
-  --arch: #4f8cff;
-  --domain: #b07cff;
-  --ux: #2ec4a6;
+  /* lines — true black at low alpha keeps the print feel */
+  --border: rgba(20, 16, 10, 0.12);
+  --border-strong: rgba(20, 16, 10, 0.22);
+  --line-ink: rgba(20, 16, 10, 0.45);
 
-  --added: #2ea043;
-  --removed: #e5534b;
-  --modified: #d29922;
+  /* text — warm-black ramp */
+  --text: #1a1814;
+  --text-dim: #6b6359;
+  --text-faint: #948a7c;
 
-  --radius: 10px;
+  /* terracotta is THE accent — one decisive color */
+  --accent: #c96442;
+  --accent-ink: #8c3e22;
+  --accent-soft: rgba(201, 100, 66, 0.09);
+  --accent-edge: rgba(201, 100, 66, 0.42);
+
+  /* artifact kinds — earthy and restrained so terracotta still leads */
+  --arch: #c96442;
+  --domain: #5f6a99;
+  --ux: #6f8662;
+
+  /* change / diff — Aonyx's own trend and severity tokens */
+  --added: #4d6a3c;
+  --removed: #8c3e22;
+  --modified: #9c6a1d;
+
+  /* type — mono everywhere */
+  --mono: "JetBrains Mono", "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+
+  /* sharp corners are a defining trait — radius stays 0 */
+  --radius: 0;
   --gap: 16px;
 
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 * {
@@ -35,17 +57,14 @@ body,
 }
 
 body {
-  font-family:
-    "Inter",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
+  font-family: var(--mono);
   background: var(--bg);
   color: var(--text);
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.5;
+  font-variant-ligatures: none;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
 }
 
 button {
@@ -69,18 +88,26 @@ button {
   gap: 32px;
 }
 
+.task {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 20px;
+}
+
 .task__eyebrow {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--text-faint);
+  color: var(--accent-ink);
 }
 
 .task__goal {
-  margin: 6px 0 0;
-  font-size: 24px;
+  margin: 8px 0 0;
+  font-family: var(--mono);
+  font-size: 23px;
   font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
 }
 
 .task__goal--empty {
@@ -107,15 +134,15 @@ button {
 
 .activity__pending {
   margin: 0;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-faint);
-  font-style: italic;
+  letter-spacing: 0.02em;
 }
 
 .message {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   max-width: 88%;
 }
 
@@ -125,49 +152,54 @@ button {
 }
 
 .message__author {
-  font-size: 11px;
+  font-size: 9.5px;
   color: var(--text-faint);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.14em;
+  font-weight: 600;
 }
 
 .message__text {
   margin: 0;
   padding: 9px 12px;
   border-radius: var(--radius);
-  background: var(--bg-raised);
-  border: 1px solid var(--border);
+  background: var(--surface-3);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
 }
 
 .message--mine .message__text {
   background: var(--accent);
-  border-color: var(--accent);
+  border-color: var(--accent-ink);
   color: #fff;
 }
 
+/* An agent's question, surfaced in the feed — a "needs input" call to action,
+   so it wears the accent (Aonyx's signal for "a human is needed here"). */
 .activity-item {
   display: flex;
   flex-direction: column;
   gap: 5px;
   width: 100%;
   text-align: left;
-  padding: 12px 14px;
+  padding: 11px 14px;
   border-radius: var(--radius);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--modified);
-  background: var(--bg-raised);
+  border: 1px solid var(--accent-edge);
+  border-left: 2px solid var(--accent);
+  background: var(--accent-soft);
+  transition: background 0.12s ease;
 }
 
 .activity-item:hover {
-  border-color: var(--modified);
+  background: var(--accent-tint, rgba(201, 100, 66, 0.16));
 }
 
 .activity-item__label {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--modified);
+  color: var(--accent-ink);
 }
 
 .activity-item__text {
@@ -184,25 +216,38 @@ button {
 
 .composer__input {
   flex: 1;
-  padding: 10px 12px;
-  border-radius: 8px;
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 9px 12px;
+  border-radius: var(--radius);
   border: 1px solid var(--border-strong);
-  background: var(--bg-inset);
+  background: var(--surface-3);
   color: var(--text);
+}
+
+.composer__input::placeholder {
+  color: var(--text-faint);
 }
 
 .composer__input:focus {
   outline: none;
   border-color: var(--accent);
+  background: var(--surface-3);
 }
 
 .composer__send {
-  padding: 0 16px;
-  border-radius: 8px;
-  border: none;
+  font-family: var(--mono);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0 18px;
+  border-radius: var(--radius);
+  border: 1px solid var(--accent-ink);
   background: var(--accent);
   color: #fff;
-  font-weight: 600;
+}
+
+.composer__send:hover {
+  background: var(--accent-ink);
 }
 
 .composer__send:disabled {
@@ -214,11 +259,11 @@ button {
 
 .artifacts__title {
   margin: 0 0 14px;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--text-faint);
+  color: var(--text-dim);
 }
 
 .artifacts__list {
@@ -232,19 +277,16 @@ button {
   flex-direction: column;
   gap: 10px;
   text-align: left;
-  padding: 16px;
+  padding: 15px;
   border-radius: var(--radius);
   border: 1px solid var(--border);
-  border-top: 3px solid var(--kind, var(--accent));
+  border-top: 2px solid var(--kind, var(--accent));
   background: var(--bg-raised);
-  transition:
-    transform 0.12s ease,
-    border-color 0.12s ease;
+  transition: border-color 0.12s ease;
 }
 
 .card:hover {
-  transform: translateY(-2px);
-  border-color: var(--border-strong);
+  border-color: var(--line-ink);
 }
 
 .card--architecture {
@@ -282,22 +324,23 @@ button {
 }
 
 .card__kind {
-  font-size: 11px;
+  font-size: 9.5px;
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--kind);
 }
 
 .card__title {
   margin: 0;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
+  line-height: 1.35;
 }
 
 .card__preview {
   height: 110px;
-  border-radius: 8px;
+  border-radius: var(--radius);
   background: var(--bg-inset);
   border: 1px solid var(--border);
   overflow: hidden;
@@ -306,17 +349,20 @@ button {
 
 .card__summary {
   margin: 0;
-  font-size: 12px;
+  font-size: 11.5px;
+  line-height: 1.45;
   color: var(--text-dim);
 }
 
 /* ---- Status pill --------------------------------------------------------- */
 
 .status-pill {
-  font-size: 11px;
+  font-size: 9.5px;
   font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 999px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: var(--radius);
   border: 1px solid currentColor;
   white-space: nowrap;
 }
@@ -325,13 +371,13 @@ button {
   color: var(--added);
 }
 .status-pill--needs-input {
-  color: var(--modified);
+  color: var(--accent);
 }
 .status-pill--stale {
   color: var(--removed);
 }
 .status-pill--drafting {
-  color: var(--text-dim);
+  color: var(--text-faint);
 }
 
 /* ---- Artifact agent screen (a full screen, not a modal) ------------------ */
@@ -357,20 +403,24 @@ button {
   display: flex;
   align-items: center;
   gap: 18px;
-  padding: 14px 22px;
+  padding: 13px 22px;
+  background: var(--bg-raised);
   border-bottom: 1px solid var(--border);
-  border-top: 3px solid var(--kind, var(--accent));
+  border-top: 2px solid var(--kind, var(--accent));
 }
 
 .back {
+  font-family: var(--mono);
+  font-size: 11px;
   border: 1px solid var(--border-strong);
-  background: var(--bg-raised);
+  background: transparent;
   color: var(--text-dim);
-  border-radius: 8px;
+  border-radius: var(--radius);
   padding: 6px 12px;
 }
 
 .back:hover {
+  border-color: var(--line-ink);
   color: var(--text);
 }
 
@@ -379,16 +429,17 @@ button {
 }
 
 .artifact__kind {
-  font-size: 11px;
+  font-size: 9.5px;
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--kind);
 }
 
 .artifact__title {
-  margin: 2px 0 0;
-  font-size: 18px;
+  margin: 3px 0 0;
+  font-size: 17px;
+  font-weight: 600;
 }
 
 .artifact__main {
@@ -425,14 +476,15 @@ button {
 }
 
 .thread__header {
-  padding: 16px 18px;
+  padding: 15px 18px;
   border-bottom: 1px solid var(--border);
 }
 
 .thread__title {
   margin: 0;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 .thread__messages {
@@ -454,15 +506,25 @@ button {
 
 /* ---- Drift banner -------------------------------------------------------- */
 
+/* A quieter caution than "needs input" — wears Aonyx's amber severity tone. */
 .drift {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 10px 22px;
-  background: rgba(210, 153, 34, 0.12);
-  border-bottom: 1px solid rgba(210, 153, 34, 0.4);
+  background: rgba(156, 106, 29, 0.1);
+  border-bottom: 1px solid rgba(156, 106, 29, 0.4);
+  color: #7d5413;
+  font-size: 12px;
+  letter-spacing: 0.01em;
+}
+
+.drift__icon {
   color: var(--modified);
-  font-size: 13px;
+}
+
+.drift__reason {
+  color: #7d5413;
 }
 
 /* ---- Graph diff ---------------------------------------------------------- */
@@ -498,17 +560,17 @@ button {
   stroke-dasharray: 2 2;
 }
 .graph__edge--unchanged {
-  stroke: var(--border-strong);
+  stroke: var(--line-ink);
 }
 
 .graph__node {
   position: absolute;
   transform: translate(-50%, -50%);
-  padding: 5px 10px;
-  border-radius: 7px;
-  background: var(--bg-raised);
+  padding: 4px 9px;
+  border-radius: var(--radius);
+  background: var(--surface-3);
   border: 1px solid var(--border-strong);
-  font-size: 12px;
+  font-size: 11px;
   white-space: nowrap;
 }
 
@@ -556,20 +618,19 @@ button {
 
 .wireframe__node {
   border: 1px solid var(--border-strong);
-  border-radius: 6px;
-  background: var(--bg-raised);
+  border-radius: var(--radius);
+  background: var(--surface-3);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 4px;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-dim);
   overflow: hidden;
 }
 
 .wireframe--preview .wireframe__node {
   font-size: 8px;
-  border-radius: 3px;
 }
 
 .wireframe__node--container {
@@ -578,7 +639,8 @@ button {
 }
 
 .wireframe__node--button {
-  background: var(--border-strong);
+  background: rgba(20, 16, 10, 0.08);
+  border-color: var(--line-ink);
   color: var(--text);
 }
 
