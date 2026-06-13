@@ -4,6 +4,7 @@ import type {
   GraphBody,
   Plan,
 } from "@inference-hackathon/core";
+import { deriveEdges, type DomainModel } from "@inference-hackathon/domain";
 import { API_BASE, toTurns } from "./planner";
 
 /** The orchestrator's reply: its prose plus the two lifecycle cues it owns. */
@@ -160,8 +161,9 @@ export function formatSurfaceContext(
 
 /**
  * Load the artifacts the planner reads from the codebase on disk. The server
- * parses each Mermaid diagram into the graph shape the UI renders, so they pass
- * straight through. Throws with the server's message on failure.
+ * shapes each into the artifact the UI renders — the domain model arrives as a
+ * structured model the deck draws with Mermaid — so they pass straight through.
+ * Throws with the server's message on failure.
  */
 export async function fetchArtifacts(): Promise<Artifact[]> {
   const response = await fetch(`${API_BASE}/api/artifacts`);
@@ -255,6 +257,26 @@ export function graphDigest(body: GraphBody): string {
     });
   const parts = [`nodes: ${nodes.join(", ") || "(none)"}`];
   if (edges.length > 0) parts.push(`edges: ${edges.join("; ")}`);
+  return parts.join(" | ");
+}
+
+/**
+ * Render a domain model as a compact one-line digest the orchestrator can reason
+ * over, mirroring {@link graphDigest}: entity names plus the relationships
+ * derived from their fields.
+ */
+export function modelDigest(model: DomainModel): string {
+  const name = new Map(
+    model.entities.map((entity) => [entity.id, entity.name]),
+  );
+  const entities = model.entities.map((entity) => entity.name);
+  const edges = deriveEdges(model).map((edge) => {
+    const from = name.get(edge.from) ?? edge.from;
+    const to = name.get(edge.to) ?? edge.to;
+    return edge.label ? `${from} ${edge.label} ${to}` : `${from} → ${to}`;
+  });
+  const parts = [`entities: ${entities.join(", ") || "(none)"}`];
+  if (edges.length > 0) parts.push(`relationships: ${edges.join("; ")}`);
   return parts.join(" | ");
 }
 

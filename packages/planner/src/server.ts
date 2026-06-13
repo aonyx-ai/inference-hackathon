@@ -1,11 +1,13 @@
-import { readdir, readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
+
+import { type DomainModel, validate } from "@inference-hackathon/domain";
 
 import { architectureEditSchema } from "./architecture-agent.ts";
 import { domainEditSchema } from "./domain-agent.ts";
-import { withGraphContext } from "./graph-context.ts";
+import { withGraphContext, withModelContext } from "./graph-context.ts";
 import { mastra } from "./mastra.ts";
-import { parseMermaidGraph } from "./mermaid-graph.ts";
+import { parseMermaidFlowchart } from "./mermaid-graph.ts";
 import { orchestratorReplySchema } from "./orchestrator.ts";
 import {
   reviewArtifactChange,
@@ -34,10 +36,16 @@ export interface TaskTitleRequest {
   prompt: string;
 }
 
-/** The current domain-model graph the agent edits, sent alongside the chat. */
-export interface DomainChatRequest {
+/** The current architecture graph the agent edits, sent alongside the chat. */
+export interface GraphChatRequest {
   messages: ChatTurn[];
   body: { type: "graph"; nodes: unknown[]; edges: unknown[] };
+}
+
+/** The current domain model the agent edits, sent alongside the chat. */
+export interface DomainChatRequest {
+  messages: ChatTurn[];
+  model: DomainModel;
 }
 
 /** The goal and finished artifacts the synthesizer folds into one plan. */
@@ -63,9 +71,10 @@ const DEFAULT_RESEARCH_ROOT = process.env.RESEARCH_REPO_ROOT ?? process.cwd();
 
 const PORT = Number(process.env.PLANNER_PORT ?? 8787);
 
-// Where the codebase being scoped lives. Its artifacts are read from its
-// `docs/*.mmd` — Mermaid diagrams the codebase renders from its own model, which
-// we parse into the editable graph the deck shows. Defaults to the working dir.
+// Where the codebase being scoped lives. The architecture map is read from
+// `docs/architecture.mmd` — a Mermaid flowchart we parse into the editable
+// graph the deck shows — and the domain model from structured `docs/domain.json`
+// the deck renders directly as Mermaid. Defaults to the working dir.
 const CODEBASE_ROOT = process.env.CODEBASE_ROOT ?? process.cwd();
 const ARTIFACTS_DIR = resolve(CODEBASE_ROOT, "docs");
 
@@ -81,35 +90,66 @@ const domain = mastra.getAgent("domain");
 const architecture = mastra.getAgent("architecture");
 
 /**
- * Read every Mermaid artifact from the codebase's `docs` folder, parse each into
- * a graph the deck renders and the domain agent edits, and tag it by filename.
- * A missing folder is not an error — the codebase just has no artifacts yet.
+ * Read the architecture map from `docs/architecture.mmd` — a Mermaid flowchart
+ * parsed into the editable graph its agent works on. A missing file is not an
+ * error — the codebase just has no architecture artifact yet.
  */
-async function readArtifacts() {
-  let entries: string[];
+async function readArchitectureArtifact() {
+  let diagram: string;
   try {
-    entries = await readdir(ARTIFACTS_DIR);
+    diagram = await readFile(join(ARTIFACTS_DIR, "architecture.mmd"), "utf8");
   } catch {
-    return [];
+    return undefined;
   }
-  const files = entries.filter((name) => name.endsWith(".mmd")).sort();
-  return Promise.all(
-    files.map(async (name) => {
-      const diagram = await readFile(join(ARTIFACTS_DIR, name), "utf8");
-      const stem = name.slice(0, -".mmd".length);
-      const kind = (KINDS as readonly string[]).includes(stem)
-        ? (stem as (typeof KINDS)[number])
-        : "domain";
-      return {
-        id: stem,
-        kind,
-        title: KIND_TITLES[kind],
-        summary: "",
-        status: "ready",
-        conversation: [],
-        body: { type: "graph", ...parseMermaidGraph(diagram) },
-      };
-    }),
+  return {
+    id: "architecture",
+    kind: "architecture" as const,
+    title: KIND_TITLES.architecture,
+    summary: "",
+    status: "ready" as const,
+    conversation: [],
+    body: { type: "graph" as const, ...parseMermaidFlowchart(diagram) },
+  };
+}
+
+/**
+ * Read the domain model the codebase keeps on disk at `docs/domain.json` and
+ * seed it as the domain artifact. The structured model renders directly as
+ * Mermaid, so there is no diagram to parse; it is its own baseline, and edits
+ * color against it. A missing file is not an error — the codebase just has no
+ * artifact yet.
+ */
+async function readDomainArtifact() {
+  let raw: string;
+  try {
+    raw = await readFile(join(ARTIFACTS_DIR, "domain.json"), "utf8");
+  } catch {
+    return undefined;
+  }
+  const model = JSON.parse(raw) as DomainModel;
+  const problems = validate(model);
+  if (problems.length > 0) {
+    throw new Error(`docs/domain.json is inconsistent: ${problems.join("; ")}`);
+  }
+  return {
+    id: "domain",
+    kind: "domain" as const,
+    title: KIND_TITLES.domain,
+    summary: "",
+    status: "ready" as const,
+    conversation: [],
+    body: { type: "domain" as const, baseline: model, model },
+  };
+}
+
+/** Read the artifacts the codebase keeps on disk and seed them into the deck. */
+async function readArtifacts() {
+  const [architectureArtifact, domainArtifact] = await Promise.all([
+    readArchitectureArtifact(),
+    readDomainArtifact(),
+  ]);
+  return [architectureArtifact, domainArtifact].flatMap((artifact) =>
+    artifact ? [artifact] : [],
   );
 }
 
@@ -129,7 +169,7 @@ function isTitleRequest(value: unknown): value is TaskTitleRequest {
   );
 }
 
-function isDomainChatRequest(value: unknown): value is DomainChatRequest {
+function isGraphChatRequest(value: unknown): value is GraphChatRequest {
   if (!hasMessages(value)) return false;
   const graph = (value as { body?: unknown }).body;
   return (
@@ -138,6 +178,17 @@ function isDomainChatRequest(value: unknown): value is DomainChatRequest {
     (graph as { type?: unknown }).type === "graph" &&
     Array.isArray((graph as { nodes?: unknown }).nodes) &&
     Array.isArray((graph as { edges?: unknown }).edges)
+  );
+}
+
+function isDomainChatRequest(value: unknown): value is DomainChatRequest {
+  if (!hasMessages(value)) return false;
+  const model = (value as { model?: unknown }).model;
+  return (
+    typeof model === "object" &&
+    model !== null &&
+    Array.isArray((model as { contexts?: unknown }).contexts) &&
+    Array.isArray((model as { entities?: unknown }).entities)
   );
 }
 
@@ -290,9 +341,9 @@ const server = Bun.serve({
       }
     }
 
-    // The domain-model agent edits a graph in place: it gets the current graph
-    // plus the chat and returns a reply and the complete updated graph, which
-    // the webview drops straight back into the artifact's body.
+    // The domain-model agent edits the model in place: it gets the current
+    // model plus the chat and returns a reply and the complete updated model,
+    // which the webview overlays on the codebase baseline and renders.
     if (request.method === "POST" && url.pathname === "/api/domain/chat") {
       let body: unknown;
       try {
@@ -302,22 +353,24 @@ const server = Bun.serve({
       }
       if (!isDomainChatRequest(body)) {
         return json(
-          { error: "Expected { messages: ChatTurn[], body: GraphBody }" },
+          { error: "Expected { messages: ChatTurn[], model: DomainModel }" },
           400,
         );
       }
 
       try {
         const result = await domain.generate(
-          toModelMessages(withGraphContext(body.body, body.messages)),
+          toModelMessages(withModelContext(body.model, body.messages)),
           { structuredOutput: { schema: domainEditSchema } },
         );
         const edit = result.object;
-        return json({
-          text: edit.reply,
-          body: { type: "graph", nodes: edit.nodes, edges: edit.edges },
-          raise: edit.raise,
-        });
+        const problems = validate(edit.model);
+        if (problems.length > 0) {
+          throw new Error(
+            `agent returned an inconsistent model: ${problems.join("; ")}`,
+          );
+        }
+        return json({ text: edit.reply, model: edit.model, raise: edit.raise });
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Unknown error";
@@ -338,7 +391,7 @@ const server = Bun.serve({
       } catch {
         return json({ error: "Invalid JSON body" }, 400);
       }
-      if (!isDomainChatRequest(body)) {
+      if (!isGraphChatRequest(body)) {
         return json(
           { error: "Expected { messages: ChatTurn[], body: GraphBody }" },
           400,

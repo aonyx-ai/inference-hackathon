@@ -1,9 +1,9 @@
 /**
- * Parse the Mermaid our renderers emit into the deck's graph shape. A
- * `classDiagram` (the domain model) and a `flowchart` (the architecture
- * dependency graph) each become nodes and edges, dropping the detail a graph
- * doesn't carry (class fields, link styling). This is how an artifact stored on
- * disk as Mermaid becomes the editable graph an artifact agent works on.
+ * Parse the Mermaid `flowchart` our architecture renderer emits into the deck's
+ * graph shape — nodes and edges, dropping the link styling a graph doesn't
+ * carry. This is how the architecture artifact stored on disk as Mermaid becomes
+ * the editable graph its agent works on. (The domain model is kept on disk as a
+ * structured model and rendered with Mermaid directly, so it needs no parsing.)
  */
 
 export interface GraphNode {
@@ -21,70 +21,6 @@ export interface GraphEdge {
 export interface ParsedGraph {
   nodes: GraphNode[];
   edges: GraphEdge[];
-}
-
-const NAMESPACE = /^namespace\s+(\S+)\s*\{$/;
-const CLASS = /^class\s+(\w+)\s*\{?$/;
-// `From <arrow> ["card"] To [: label]`, where arrow is any class-diagram
-// connector. Cardinality and the trailing label are both optional.
-const EDGE =
-  /^(\w+)\s+(?:"[^"]*"\s+)?(\*--|<\|--|-->|--\*|--\|>|<--|o--|--o|\.\.>|<\.\.|--)\s+(?:"[^"]*"\s+)?(\w+)\s*(?::\s*(.+?))?$/;
-
-/** Trim Mermaid's `Context` namespace suffix back to the bounded-context name. */
-function groupName(namespace: string): string {
-  return namespace.replace(/Context$/, "");
-}
-
-export function parseMermaidClassDiagram(diagram: string): ParsedGraph {
-  const nodes: GraphNode[] = [];
-  const edges: GraphEdge[] = [];
-  const seen = new Set<string>();
-
-  let group: string | undefined;
-  let inClassBody = false;
-
-  for (const raw of diagram.split("\n")) {
-    const line = raw.trim();
-    if (line === "") continue;
-
-    const namespace = NAMESPACE.exec(line);
-    if (namespace) {
-      group = groupName(namespace[1]!);
-      continue;
-    }
-
-    const klass = CLASS.exec(line);
-    if (klass) {
-      const name = klass[1]!;
-      if (!seen.has(name)) {
-        seen.add(name);
-        nodes.push(
-          group ? { id: name, label: name, group } : { id: name, label: name },
-        );
-      }
-      inClassBody = !line.endsWith("}");
-      continue;
-    }
-
-    // A `}` closes the open class body, or — once classes are done — the
-    // namespace. Everything inside a class body is a field we ignore.
-    if (line === "}") {
-      if (inClassBody) inClassBody = false;
-      else group = undefined;
-      continue;
-    }
-    if (inClassBody) continue;
-
-    const edge = EDGE.exec(line);
-    if (edge) {
-      const [, from, , to, label] = edge;
-      edges.push(
-        label ? { from: from!, to: to!, label } : { from: from!, to: to! },
-      );
-    }
-  }
-
-  return { nodes, edges };
 }
 
 // A flowchart node, e.g. `n0["core"]` (internal) or `n4(["react"])` (external).
@@ -141,11 +77,4 @@ export function parseMermaidFlowchart(diagram: string): ParsedGraph {
     return edge.label ? { from, to, label: edge.label } : { from, to };
   });
   return { nodes, edges };
-}
-
-/** Parse whichever Mermaid graph an artifact file holds, by its first directive. */
-export function parseMermaidGraph(diagram: string): ParsedGraph {
-  return /^\s*flowchart\b/m.test(diagram)
-    ? parseMermaidFlowchart(diagram)
-    : parseMermaidClassDiagram(diagram);
 }

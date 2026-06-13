@@ -8,6 +8,8 @@
  * to the developer.
  */
 
+import type { DomainModel } from "@inference-hackathon/domain";
+
 export type ArtifactKind = "architecture" | "domain" | "ux";
 
 /**
@@ -46,11 +48,23 @@ export interface GraphEdge {
   change?: Change;
 }
 
-/** A diffable graph — used for architecture and domain-model artifacts. */
+/** A diffable graph — used for architecture artifacts. */
 export interface GraphBody {
   type: "graph";
   nodes: GraphNode[];
   edges: GraphEdge[];
+}
+
+/**
+ * A domain-model artifact: the structured {@link DomainModel} itself, rendered
+ * directly as a Mermaid class diagram. `baseline` is the model as it stands in
+ * the codebase and never changes; `model` is the current, possibly agent-edited
+ * model. The renderer overlays the two so edits color against the codebase.
+ */
+export interface DomainBody {
+  type: "domain";
+  baseline: DomainModel;
+  model: DomainModel;
 }
 
 export type WireframeNodeKind =
@@ -138,7 +152,11 @@ export interface DesignBody {
   tokens?: TokenDelta[];
 }
 
-export type ArtifactBodyData = GraphBody | WireframeBody | DesignBody;
+export type ArtifactBodyData =
+  | GraphBody
+  | DomainBody
+  | WireframeBody
+  | DesignBody;
 
 export interface Artifact {
   id: string;

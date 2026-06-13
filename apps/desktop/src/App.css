@@ -876,6 +876,38 @@ button.activity-event:hover {
   color: var(--modified);
 }
 
+/* ---- Domain model (Mermaid) ---------------------------------------------- */
+
+.mermaid-diagram {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 320px;
+}
+
+/* Mermaid sizes the SVG to its own viewBox; let it grow to fill the canvas. */
+.mermaid-diagram svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.mermaid-diagram--preview {
+  min-height: 0;
+}
+
+/* The fallback shown if Mermaid can't parse the projection — keep the source
+   legible rather than leaving the pane blank. */
+.mermaid-diagram--error {
+  display: block;
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: pre-wrap;
+}
+
 /* ---- Wireframe ----------------------------------------------------------- */
 
 .wireframe {

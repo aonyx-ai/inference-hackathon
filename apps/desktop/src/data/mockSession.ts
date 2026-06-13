@@ -1,11 +1,105 @@
 import type { Session } from "@inference-hackathon/core";
+import type { DomainModel } from "@inference-hackathon/domain";
+
+/**
+ * The model "as it stands today" for the seed session: a small Projects and
+ * Tasks domain. It is its own baseline, so anything the domain agent adds,
+ * removes, or modifies shows up colored against it once the model is overlaid.
+ */
+const projectsAndTasks: DomainModel = {
+  contexts: [{ id: "collaboration", name: "Collaboration" }],
+  entities: [
+    {
+      id: "user",
+      name: "User",
+      kind: "AggregateRoot",
+      context: "collaboration",
+      fields: [
+        {
+          id: "user.id",
+          name: "id",
+          type: { kind: "Scalar", name: "UserId" },
+          role: "Identity",
+        },
+        {
+          id: "user.name",
+          name: "name",
+          type: { kind: "Scalar", name: "string" },
+        },
+        {
+          id: "user.email",
+          name: "email",
+          type: { kind: "Scalar", name: "string" },
+        },
+      ],
+    },
+    {
+      id: "project",
+      name: "Project",
+      kind: "AggregateRoot",
+      context: "collaboration",
+      fields: [
+        {
+          id: "project.id",
+          name: "id",
+          type: { kind: "Scalar", name: "ProjectId" },
+          role: "Identity",
+        },
+        {
+          id: "project.name",
+          name: "name",
+          type: { kind: "Scalar", name: "string" },
+        },
+        {
+          id: "project.owner",
+          name: "owner",
+          type: { kind: "Reference", target: "user" },
+        },
+        {
+          id: "project.tasks",
+          name: "tasks",
+          type: { kind: "Contains", target: "task" },
+          collection: true,
+        },
+      ],
+    },
+    {
+      id: "task",
+      name: "Task",
+      kind: "Entity",
+      context: "collaboration",
+      fields: [
+        {
+          id: "task.id",
+          name: "id",
+          type: { kind: "Scalar", name: "TaskId" },
+          role: "Identity",
+        },
+        {
+          id: "task.title",
+          name: "title",
+          type: { kind: "Scalar", name: "string" },
+        },
+        {
+          id: "task.done",
+          name: "done",
+          type: { kind: "Scalar", name: "boolean" },
+        },
+        {
+          id: "task.assignee",
+          name: "assignee",
+          type: { kind: "Reference", target: "user" },
+          optional: true,
+        },
+      ],
+    },
+  ],
+};
 
 /**
  * A seed session with one domain-model artifact, so the artifact agent screen
  * can be exercised before the orchestrator is wired up to spawn artifacts on its
- * own. The graph starts as the model "as it stands today" — every node and edge
- * marked `unchanged` — so anything the domain agent adds, removes, or modifies
- * shows up colored against this baseline in the differ.
+ * own.
  *
  * `main.tsx` seeds this; tests and the empty app start from a blank session.
  * Delete the seed once the orchestrator produces artifacts for real.
@@ -39,22 +133,9 @@ export const mockSession: Session = {
         },
       ],
       body: {
-        type: "graph",
-        nodes: [
-          { id: "user", label: "User", change: "unchanged" },
-          { id: "project", label: "Project", change: "unchanged" },
-          { id: "task", label: "Task", change: "unchanged" },
-        ],
-        edges: [
-          { from: "user", to: "project", label: "owns", change: "unchanged" },
-          {
-            from: "project",
-            to: "task",
-            label: "contains",
-            change: "unchanged",
-          },
-          { from: "user", to: "task", label: "assigned", change: "unchanged" },
-        ],
+        type: "domain",
+        baseline: projectsAndTasks,
+        model: projectsAndTasks,
       },
     },
   ],
