@@ -83,6 +83,10 @@ render-domain-diff:
 check-arch:
     cd packages/architecture && bun run check
 
+# Regenerate the example architecture review in docs/architecture-review-example.md
+render-architecture:
+    cd packages/architecture && bun run render
+
 # Run all fast tests (Rust unit + frontend unit)
 test: test-rust test-ts
 
