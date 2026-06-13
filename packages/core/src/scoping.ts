@@ -79,7 +79,66 @@ export interface WireframeBody {
   nodes: WireframeNode[];
 }
 
-export type ArtifactBodyData = GraphBody | WireframeBody;
+/**
+ * The bounded vocabulary a high-fidelity design scene is built from. Keeping it
+ * a closed set lets a renderer map each name to a real, themed component;
+ * anything outside it falls back to a labeled box, so an agent can always
+ * describe something.
+ */
+export type UiComponent =
+  | "stack"
+  | "row"
+  | "card"
+  | "header"
+  | "heading"
+  | "text"
+  | "button"
+  | "field"
+  | "badge"
+  | "list"
+  | "listItem";
+
+/** A node in a design scene's component tree. */
+export interface UiNode {
+  id: string;
+  component: UiComponent;
+  /** Props the renderer understands, e.g. `label`, `variant`, `placeholder`. */
+  props?: Record<string, string>;
+  children?: UiNode[];
+  change?: Change;
+}
+
+/** A named screen described as a tree of {@link UiNode}s. */
+export interface DesignScene {
+  screen: string;
+  root: UiNode;
+}
+
+/**
+ * A single design-token change applied to the proposed pane, e.g. swapping the
+ * primary accent. `name` is a CSS custom property such as `--accent`.
+ */
+export interface TokenDelta {
+  name: string;
+  before: string;
+  after: string;
+}
+
+/**
+ * A high-fidelity UI design diff — used for user-experience artifacts. The
+ * current and proposed scenes render side by side from a structured component
+ * tree, with optional token deltas themed onto the proposed pane. A pure accent
+ * change is the degenerate case: the same tree before and after, one entry in
+ * {@link DesignBody.tokens}.
+ */
+export interface DesignBody {
+  type: "design";
+  before: DesignScene;
+  after: DesignScene;
+  tokens?: TokenDelta[];
+}
+
+export type ArtifactBodyData = GraphBody | WireframeBody | DesignBody;
 
 export interface Artifact {
   id: string;

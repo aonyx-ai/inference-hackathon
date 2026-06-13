@@ -1,6 +1,10 @@
 import { expect, test } from "bun:test";
 import { render, screen } from "@testing-library/react";
-import type { GraphBody, WireframeBody } from "@inference-hackathon/core";
+import type {
+  DesignBody,
+  GraphBody,
+  WireframeBody,
+} from "@inference-hackathon/core";
 
 import { ArtifactBody } from "./ArtifactBody.tsx";
 
@@ -53,4 +57,40 @@ test("renders a wireframe body with labels and marks added nodes", () => {
   expect(screen.getByText("Header")).toBeInTheDocument();
   expect(screen.getByText("Export")).toBeInTheDocument();
   expect(container.querySelector(".wireframe__node--added")).not.toBeNull();
+});
+
+test("renders a design body as a current/proposed side-by-side", () => {
+  const body: DesignBody = {
+    type: "design",
+    before: {
+      screen: "Dashboard",
+      root: {
+        id: "card",
+        component: "card",
+        children: [{ id: "h", component: "heading", props: { label: "Acme" } }],
+      },
+    },
+    after: {
+      screen: "Dashboard",
+      root: {
+        id: "card",
+        component: "card",
+        children: [
+          { id: "h", component: "heading", props: { label: "Acme" } },
+          {
+            id: "cta",
+            component: "button",
+            props: { label: "Share" },
+            change: "added",
+          },
+        ],
+      },
+    },
+    tokens: [{ name: "--accent", before: "#c96442", after: "#3b6ea5" }],
+  };
+
+  const { container } = render(<ArtifactBody body={body} />);
+
+  expect(screen.getByText("Proposed")).toBeInTheDocument();
+  expect(container.querySelector(".design__pane--after")).not.toBeNull();
 });

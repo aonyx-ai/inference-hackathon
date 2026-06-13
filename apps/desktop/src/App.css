@@ -791,3 +791,255 @@ button {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ---- Design diff (high-fidelity before/after) --------------------------- */
+
+.design {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+}
+
+.design--preview {
+  min-height: 0;
+  gap: 4px;
+}
+
+.design__panes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+}
+
+.design--preview .design__panes {
+  gap: 4px;
+}
+
+.design__pane {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  overflow: auto;
+}
+
+.design--preview .design__pane {
+  gap: 5px;
+  padding: 5px;
+  overflow: hidden;
+}
+
+.design__pane-label {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.design--preview .design__pane-label {
+  font-size: 7px;
+}
+
+.design__scene {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* The preview kit — real, themed components built from the design tokens, so a
+   token delta scoped to a pane recolors them exactly as it would in the app. */
+
+.ui-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ui-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ui-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  background: var(--surface-3);
+  border: 1px solid var(--border-strong);
+}
+
+.design--preview .ui-card {
+  gap: 5px;
+  padding: 6px;
+}
+
+.ui-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.ui-heading {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ui-text {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.ui-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--surface-3);
+  background: var(--accent);
+  border: 1px solid var(--accent-ink);
+  white-space: nowrap;
+}
+
+.ui-button--secondary {
+  color: var(--text);
+  background: var(--surface-3);
+  border-color: var(--border-strong);
+}
+
+.ui-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ui-field__label {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.ui-field__input {
+  padding: 6px 9px;
+  font-size: 12px;
+  color: var(--text-faint);
+  background: var(--surface-3);
+  border: 1px solid var(--border-strong);
+}
+
+.ui-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+  border: 1px solid var(--accent);
+}
+
+.ui-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.ui-listItem {
+  padding: 7px 0;
+  font-size: 12px;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+
+.ui-label {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.ui-fallback {
+  padding: 8px;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--text-faint);
+  border: 1px dashed var(--border-strong);
+}
+
+.design--preview .ui-heading {
+  font-size: 9px;
+}
+
+.design--preview .ui-text,
+.design--preview .ui-button,
+.design--preview .ui-badge,
+.design--preview .ui-field__label,
+.design--preview .ui-field__input,
+.design--preview .ui-listItem {
+  font-size: 7px;
+}
+
+.design--preview .ui-button {
+  padding: 2px 5px;
+}
+
+/* Diff outlines layer over each component's own border without shifting layout,
+   mirroring how the graph and wireframe color changed nodes. */
+
+.design__node--added {
+  outline: 1.5px solid var(--added);
+  outline-offset: 1px;
+}
+
+.design__node--removed {
+  outline: 1.5px dashed var(--removed);
+  outline-offset: 1px;
+  opacity: 0.6;
+}
+
+.design__node--modified {
+  outline: 1.5px solid var(--modified);
+  outline-offset: 1px;
+}
+
+.design__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.design__token {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.design__token-name {
+  color: var(--text);
+}
+
+.design__swatch {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border: 1px solid var(--border-strong);
+}
+
+.design__arrow {
+  color: var(--text-faint);
+}

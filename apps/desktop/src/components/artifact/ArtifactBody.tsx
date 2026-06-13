@@ -1,4 +1,5 @@
 import type { ArtifactBodyData } from "@inference-hackathon/core";
+import { DesignArtifact } from "./DesignArtifact";
 import { GraphDiff } from "./GraphDiff";
 import { WireframeArtifact } from "./WireframeArtifact";
 
@@ -15,5 +16,7 @@ export function ArtifactBody({
       return <GraphDiff body={body} preview={preview} />;
     case "wireframe":
       return <WireframeArtifact body={body} preview={preview} />;
+    case "design":
+      return <DesignArtifact body={body} preview={preview} />;
   }
 }
