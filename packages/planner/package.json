@@ -6,6 +6,9 @@
   "exports": {
     ".": "./src/index.ts"
   },
+  "scripts": {
+    "serve": "bun run src/server.ts"
+  },
   "dependencies": {
     "@mastra/core": "^1.42.0",
     "@mastra/libsql": "^1.13.0",

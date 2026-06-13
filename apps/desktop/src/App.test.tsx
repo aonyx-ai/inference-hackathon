@@ -3,10 +3,26 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders } from "../test/render.tsx";
+import { sampleSession } from "../test/fixtures.ts";
 import App from "./App.tsx";
 
-test("orchestration screen shows the task, an agent question, and the artifacts", () => {
+test("starts on an empty orchestration screen inviting a task", () => {
   renderWithProviders(<App />);
+
+  expect(
+    screen.getByRole("heading", {
+      name: "Describe the change you want to scope",
+    }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByPlaceholderText("Describe the task you want to scope…"),
+  ).toBeInTheDocument();
+  // Nothing fabricated: no artifacts until the orchestrator produces them.
+  expect(screen.queryByText("Artifacts")).not.toBeInTheDocument();
+});
+
+test("renders the task, an agent question, and the artifacts from state", () => {
+  renderWithProviders(<App />, { initialSession: sampleSession });
 
   expect(
     screen.getByRole("heading", {
@@ -22,7 +38,7 @@ test("orchestration screen shows the task, an agent question, and the artifacts"
 });
 
 test("clicking an agent question opens that artifact's screen and back returns", async () => {
-  renderWithProviders(<App />);
+  renderWithProviders(<App />, { initialSession: sampleSession });
   const user = userEvent.setup();
 
   await user.click(screen.getByText(/Architecture agent needs input/));
@@ -41,7 +57,10 @@ test("clicking an agent question opens that artifact's screen and back returns",
 });
 
 test("a stale artifact surfaces a drift banner explaining the drift", () => {
-  renderWithProviders(<App />, { route: "/artifact/a-ux" });
+  renderWithProviders(<App />, {
+    route: "/artifact/a-ux",
+    initialSession: sampleSession,
+  });
 
   expect(screen.getByText("May be stale")).toBeInTheDocument();
   expect(

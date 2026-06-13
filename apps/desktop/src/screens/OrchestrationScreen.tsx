@@ -12,16 +12,23 @@ import { useSession } from "../state/SessionContext";
  * opens that artifact's screen.
  */
 export function OrchestrationScreen() {
-  const { session, sendToOrchestrator } = useSession();
+  const { session, orchestratorPending, sendToOrchestrator } = useSession();
   const navigate = useNavigate();
   const open = openDecisions(session);
+  const started = session.conversation.length > 0;
 
   return (
     <div className="orchestration">
       <div className="orchestration__column">
         <header className="task">
           <span className="task__eyebrow">Task</span>
-          <h1 className="task__goal">{session.goal}</h1>
+          {session.goal ? (
+            <h1 className="task__goal">{session.goal}</h1>
+          ) : (
+            <h1 className="task__goal task__goal--empty">
+              Describe the change you want to scope
+            </h1>
+          )}
         </header>
 
         <section className="activity">
@@ -45,20 +52,30 @@ export function OrchestrationScreen() {
               </li>
             ))}
           </ol>
+          {orchestratorPending && (
+            <p className="activity__pending">Orchestrator is thinking…</p>
+          )}
           <Composer
-            placeholder="Reply to the orchestrator…"
+            placeholder={
+              started
+                ? "Reply to the orchestrator…"
+                : "Describe the task you want to scope…"
+            }
             onSend={sendToOrchestrator}
+            disabled={orchestratorPending}
           />
         </section>
 
-        <section className="artifacts">
-          <h2 className="artifacts__title">Artifacts</h2>
-          <div className="artifacts__list">
-            {session.artifacts.map((artifact) => (
-              <ArtifactCard key={artifact.id} artifact={artifact} />
-            ))}
-          </div>
-        </section>
+        {session.artifacts.length > 0 && (
+          <section className="artifacts">
+            <h2 className="artifacts__title">Artifacts</h2>
+            <div className="artifacts__list">
+              {session.artifacts.map((artifact) => (
+                <ArtifactCard key={artifact.id} artifact={artifact} />
+              ))}
+            </div>
+          </section>
+        )}
       </div>
     </div>
   );

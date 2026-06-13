@@ -93,8 +93,10 @@ test-rust:
 # Build the debug app with the embedded WebDriver server, then run the E2E suite.
 # Named `e2e` (not `test-e2e`) so CI does not auto-run this heavy, display-bound
 # suite in the headless recipe matrix; it has its own workflow with a display.
+# The bundled app has no Vite proxy, so it is built with VITE_API_BASE pointing
+# at the planner server the E2E harness boots (see apps/desktop/e2e/wdio.conf.ts).
 e2e:
-    cd apps/desktop && bun run tauri build --debug --no-bundle -- --features webdriver
+    cd apps/desktop && VITE_API_BASE=http://localhost:8787 bun run tauri build --debug --no-bundle -- --features webdriver
     cd apps/desktop && bun run e2e
 
 # Run the Tauri desktop app in development
