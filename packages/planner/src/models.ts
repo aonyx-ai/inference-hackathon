@@ -19,6 +19,13 @@ const NEBIUS_BASE_URL = "https://api.studio.nebius.com/v1";
 const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6";
 const DEFAULT_NEBIUS_MODEL = "meta-llama/Llama-3.3-70B-Instruct";
 
+// The repo-research stage runs on a Nemotron model: a reasoning-tuned, tool-
+// using open model that is cheap enough to fan out across the codebase before
+// the artifact agents ever run. It is always a Nebius-hosted model, regardless
+// of which provider the orchestrator uses, and is overridable with
+// `NEBIUS_RESEARCH_MODEL`.
+const DEFAULT_NEMOTRON_MODEL = "nvidia/Nemotron-3-Ultra-550b-a55b";
+
 export type ModelProvider = "anthropic" | "nebius";
 
 /** Claude through the model router; reads `ANTHROPIC_API_KEY` from the env. */
@@ -57,4 +64,17 @@ export function orchestratorModel(): MastraModelConfig {
  */
 export function artifactAgentModel(): MastraModelConfig {
   return orchestratorModel();
+}
+
+/**
+ * The model that backs the repo-research agents. It is deliberately pinned to
+ * Nemotron on Nebius rather than following `ORCHESTRATOR_PROVIDER`: the research
+ * fan-out is the one stage we always want to run on a cheap, tool-using open
+ * model, so exploring a large codebase stays affordable even when the
+ * orchestrator and artifact agents are on Claude.
+ */
+export function researchModel(): MastraModelConfig {
+  return nebiusModel(
+    process.env.NEBIUS_RESEARCH_MODEL ?? DEFAULT_NEMOTRON_MODEL,
+  );
 }

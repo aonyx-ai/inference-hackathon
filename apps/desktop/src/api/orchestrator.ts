@@ -29,6 +29,87 @@ export async function askOrchestrator(
   return data.text ?? "";
 }
 
+/** One surface's findings from the repo-research stage, as the server sends them. */
+export interface SurfaceFindings {
+  summary: string;
+  relevantPaths: { path: string; why: string }[];
+  touchpoints: string[];
+  conventions: string[];
+  openQuestions: string[];
+}
+
+/** The grounding the research agents gathered, keyed by surface. */
+export interface RepoContext {
+  goal: string;
+  root: string;
+  surfaces: {
+    architecture: SurfaceFindings;
+    domain: SurfaceFindings;
+    ux: SurfaceFindings;
+  };
+  error?: string;
+}
+
+/**
+ * Run the repo-research stage: a group of Nemotron agents reads the working
+ * directory and returns the grounding the artifact agents fold into their
+ * prompts. The repository to explore is chosen by the server (it dogfoods on
+ * its own checkout) unless `VITE_REPO_ROOT` names one. Throws with the server's
+ * message on failure.
+ */
+export async function research(goal: string): Promise<RepoContext> {
+  const root = import.meta.env.VITE_REPO_ROOT;
+  const response = await fetch(`${API_BASE}/api/research`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(root ? { goal, root } : { goal }),
+  });
+
+  const data = (await response.json()) as RepoContext;
+  if (!response.ok) {
+    throw new Error(
+      data.error ?? `Research request failed (${response.status})`,
+    );
+  }
+  return data;
+}
+
+/**
+ * Render one surface's findings as a prompt block for its artifact agent, so
+ * the grounding the researcher gathered travels into the agent that proposes
+ * the change. Empty sections are dropped.
+ */
+export function formatSurfaceContext(
+  context: RepoContext,
+  surface: keyof RepoContext["surfaces"],
+): string {
+  const findings = context.surfaces[surface];
+  const lines = [
+    `Repository context for the ${surface} surface (gathered by reading the actual code):`,
+    "",
+    `How it works today: ${findings.summary}`,
+  ];
+  if (findings.relevantPaths.length > 0) {
+    lines.push(
+      "",
+      "Relevant paths:",
+      ...findings.relevantPaths.map(
+        (entry) => `  - ${entry.path}: ${entry.why}`,
+      ),
+    );
+  }
+  if (findings.touchpoints.length > 0) {
+    lines.push("", `Likely touchpoints: ${findings.touchpoints.join("; ")}`);
+  }
+  if (findings.conventions.length > 0) {
+    lines.push("", `Conventions to honor: ${findings.conventions.join("; ")}`);
+  }
+  if (findings.openQuestions.length > 0) {
+    lines.push("", `Open questions: ${findings.openQuestions.join("; ")}`);
+  }
+  return lines.join("\n");
+}
+
 /** The graph the domain modeler returns, before it is dressed as an artifact. */
 interface DomainArtifactResponse {
   title: string;
@@ -42,15 +123,19 @@ let domainArtifactCounter = 0;
 
 /**
  * Ask the domain modeler to scope the task as a domain-model graph and return it
- * as a ready artifact. Everything the model produces is new, so each node and
- * edge is marked as added for the diff view. Throws with the server's message on
- * failure.
+ * as a ready artifact. When the research stage has run, its domain context is
+ * passed so the graph is grounded in the entities already in the codebase.
+ * Everything the model produces is new, so each node and edge is marked as added
+ * for the diff view. Throws with the server's message on failure.
  */
-export async function createDomainArtifact(goal: string): Promise<Artifact> {
+export async function createDomainArtifact(
+  goal: string,
+  context?: string,
+): Promise<Artifact> {
   const response = await fetch(`${API_BASE}/api/orchestrator/domain`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ goal }),
+    body: JSON.stringify(context ? { goal, context } : { goal }),
   });
 
   const data = (await response.json()) as DomainArtifactResponse;

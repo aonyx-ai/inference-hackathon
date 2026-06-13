@@ -14,7 +14,12 @@ import type {
   Session,
 } from "@inference-hackathon/core";
 import { findArtifact } from "@inference-hackathon/core";
-import { askOrchestrator, createDomainArtifact } from "../api/orchestrator";
+import {
+  askOrchestrator,
+  createDomainArtifact,
+  formatSurfaceContext,
+  research,
+} from "../api/orchestrator";
 import { askDomainAgent } from "../api/artifactAgent";
 
 /** A fresh session with nothing in it; the orchestrator fills it as you talk. */
@@ -30,6 +35,8 @@ interface SessionContextValue {
   session: Session;
   /** True while the orchestrator is generating a reply. */
   orchestratorPending: boolean;
+  /** True while the research agents are reading the repo to ground the artifacts. */
+  researchPending: boolean;
   /** True while the domain modeler is drafting the first artifact. */
   domainPending: boolean;
   /** Send a message to the orchestrator on the orchestration screen. */
@@ -69,6 +76,7 @@ export function SessionProvider({
 }) {
   const [session, setSession] = useState<Session>(initialSession);
   const [orchestratorPending, setOrchestratorPending] = useState(false);
+  const [researchPending, setResearchPending] = useState(false);
   const [domainPending, setDomainPending] = useState(false);
   // Ids of artifacts whose agent is mid-reply, so each screen can show its own
   // pending state without blocking the others.
@@ -104,11 +112,22 @@ export function SessionProvider({
       conversation: appendMessage(current.conversation, userMessage),
     }));
 
-    // The opening prompt also kicks off the first artifact: the domain modeler
-    // scopes the task as a graph, which lands in the deck when it is ready.
+    // The opening prompt also kicks off the first artifact. First a group of
+    // research agents reads the repo to learn how it works; their domain context
+    // then grounds the domain modeler, whose graph lands in the deck. Research
+    // can fail (no key, no repo) — the artifact is still drafted, just from the
+    // prompt alone.
     if (isFirstMessage) {
+      setResearchPending(true);
       setDomainPending(true);
-      void createDomainArtifact(text)
+      void research(text)
+        .then((context) => formatSurfaceContext(context, "domain"))
+        .catch((error: unknown) => {
+          console.error("Repo research failed:", error);
+          return undefined;
+        })
+        .finally(() => setResearchPending(false))
+        .then((domainContext) => createDomainArtifact(text, domainContext))
         .then((artifact) => {
           setSession((current) => ({
             ...current,
@@ -219,6 +238,7 @@ export function SessionProvider({
     () => ({
       session,
       orchestratorPending,
+      researchPending,
       domainPending,
       sendToOrchestrator,
       sendToArtifactAgent,
@@ -228,6 +248,7 @@ export function SessionProvider({
     [
       session,
       orchestratorPending,
+      researchPending,
       domainPending,
       sendToOrchestrator,
       sendToArtifactAgent,

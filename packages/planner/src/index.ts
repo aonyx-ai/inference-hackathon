@@ -14,10 +14,21 @@ export {
   type DomainEdit,
 } from "./domain-agent.ts";
 export {
+  researchRepo,
+  formatSurfaceContext,
+  SurfaceFindingsSchema,
+  SURFACES,
+  type Surface,
+  type SurfaceFindings,
+  type RepoContext,
+} from "./research.ts";
+export { repoTools, resolveWithinRoot } from "./research-tools.ts";
+export {
   anthropicModel,
   artifactAgentModel,
   nebiusModel,
   orchestratorModel,
+  researchModel,
   type ModelProvider,
 } from "./models.ts";
 export type {
@@ -25,4 +36,5 @@ export type {
   DomainArtifactRequest,
   DomainChatRequest,
   OrchestratorChatRequest,
+  RepoResearchRequest,
 } from "./server.ts";
