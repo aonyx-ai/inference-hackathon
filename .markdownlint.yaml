@@ -1,1 +1,6 @@
 ---
+# Line length applies to prose only. Fenced code blocks (e.g. Mermaid `note`
+# lines) and table rows often cannot wrap, matching our Markdown conventions.
+MD013:
+  code_blocks: false
+  tables: false
