@@ -75,6 +75,10 @@ lint-yaml:
 render-domain:
     cd packages/domain && bun run render
 
+# Regenerate the example domain model diff in docs/domain-model-diff-example.md
+render-domain-diff:
+    cd packages/domain && bun run render-diff
+
 # Run all fast tests (Rust unit + frontend unit)
 test: test-rust test-ts
 

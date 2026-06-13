@@ -6,4 +6,4 @@
 export * from "./model.ts";
 export * from "./diff.ts";
 export { lontra } from "./lontra.ts";
-export { toMermaid } from "./mermaid.ts";
+export { toMermaid, toMermaidDiff } from "./mermaid.ts";

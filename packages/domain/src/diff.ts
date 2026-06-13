@@ -405,7 +405,9 @@ export function formatChangeset(changeset: Changeset): string {
   for (const group of groups) {
     const ops = changeset.operations.filter((op) => op.compat === group);
     if (ops.length === 0) continue;
-    lines.push("", `### ${group}`);
+    // Blank line after the heading so the Markdown is well-formed (a list must
+    // be separated from its heading) and stays prettier-clean once embedded.
+    lines.push("", `### ${group}`, "");
     for (const op of ops) lines.push(`- ${describeOperation(op)}`);
   }
 

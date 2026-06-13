@@ -3,3 +3,7 @@ node_modules/
 dist/
 target/
 gen/
+
+# Generated docs with data-driven content; validated via mermaid-cli and tests.
+docs/domain-model.md
+docs/domain-model-diff-example.md
