@@ -15,13 +15,12 @@ const PORT = 4445;
 
 // The planner's Mastra server the bundled webview talks to. A packaged build
 // has no Vite proxy, so the app is built with `VITE_API_BASE` pointing here and
-// we run the server ourselves for the duration of the e2e run.
+// we run the server ourselves for the duration of the e2e run. We start it from
+// the repo root so Bun loads the root `.env` and the agents get their API keys.
 const PLANNER_PORT = 8787;
+const REPO_ROOT = resolve(import.meta.dirname, "..", "..", "..");
 const PLANNER_ENTRY = resolve(
-  import.meta.dirname,
-  "..",
-  "..",
-  "..",
+  REPO_ROOT,
   "packages",
   "planner",
   "src",
@@ -120,6 +119,7 @@ export const config: WebdriverIO.Config = {
   // block until both answer before any session is created.
   onPrepare: async () => {
     plannerProcess = spawn("bun", ["run", PLANNER_ENTRY], {
+      cwd: REPO_ROOT,
       stdio: "inherit",
       env: { ...process.env, PLANNER_PORT: String(PLANNER_PORT) },
     });

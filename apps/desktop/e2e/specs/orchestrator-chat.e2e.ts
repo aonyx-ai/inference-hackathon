@@ -1,11 +1,12 @@
-// Real end-to-end test of the chat wiring: drives the actual webview, sends a
-// message to the orchestrator, and waits for a reply. The reply is a genuine
-// model call routed through the planner's Mastra server (booted by wdio.conf's
-// onPrepare and reached via the VITE_API_BASE the app was built with), so this
-// exercises the full path — composer, session state, fetch, agent, render.
+// Real end-to-end test of the chat wiring: drives the actual webview, sends the
+// opening prompt, and waits for both the orchestrator's reply and the domain
+// artifact it spins up. Both are genuine model calls routed through the planner's
+// Mastra server (booted by wdio.conf's onPrepare and reached via the
+// VITE_API_BASE the app was built with), so this exercises the full path —
+// composer, session state, fetch, agents, render.
 
 describe("orchestrator chat", () => {
-  it("sends a message and renders the orchestrator's reply", async () => {
+  it("opens a task, replies, and produces a domain artifact", async () => {
     const task = await browser.$(".task__goal");
     await task.waitForExist({ timeout: 10_000 });
 
@@ -13,7 +14,7 @@ describe("orchestrator chat", () => {
 
     const input = await browser.$("input.composer__input");
     await input.waitForExist({ timeout: 10_000 });
-    const prompt = "In one short sentence, what will you scope first?";
+    const prompt = "Let users export their dashboard as a PDF";
     await input.setValue(prompt);
 
     const send = await browser.$("button.composer__send");
@@ -42,5 +43,10 @@ describe("orchestrator chat", () => {
         `Sent message not found in feed. Saw: ${JSON.stringify(mineTexts)}`,
       );
     }
+
+    // The opening prompt also spins up the domain artifact, which lands in the
+    // deck as a domain card once the modeler returns.
+    const domainCard = await browser.$(".card--domain");
+    await domainCard.waitForExist({ timeout: 45_000 });
   });
 });
