@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  activityFeed,
   artifactKindLabel,
   findArtifact,
   openDecisions,
@@ -65,5 +66,53 @@ describe("findArtifact", () => {
 
   test("returns undefined for an unknown id", () => {
     expect(findArtifact(makeSession(), "nope")).toBeUndefined();
+  });
+});
+
+describe("activityFeed", () => {
+  test("interleaves messages and activity in timestamp order", () => {
+    const session: Session = {
+      ...makeSession(),
+      conversation: [
+        { id: "m1", author: "user", text: "go", at: "2026-06-13T10:00:00Z" },
+        {
+          id: "m2",
+          author: "orchestrator",
+          text: "on it",
+          at: "2026-06-13T10:00:03Z",
+        },
+      ],
+      activity: [
+        {
+          id: "a1",
+          kind: "research",
+          text: "Read the repository",
+          at: "2026-06-13T10:00:02Z",
+        },
+      ],
+    };
+
+    const feed = activityFeed(session);
+    expect(feed.map((item) => item.at)).toEqual([
+      "2026-06-13T10:00:00Z",
+      "2026-06-13T10:00:02Z",
+      "2026-06-13T10:00:03Z",
+    ]);
+    expect(feed.map((item) => item.type)).toEqual([
+      "message",
+      "activity",
+      "message",
+    ]);
+  });
+
+  test("treats a missing activity log as empty", () => {
+    const session: Session = {
+      ...makeSession(),
+      conversation: [
+        { id: "m1", author: "user", text: "hi", at: "2026-06-13T10:00:00Z" },
+      ],
+    };
+    delete session.activity;
+    expect(activityFeed(session)).toHaveLength(1);
   });
 });

@@ -1,15 +1,16 @@
 import { useNavigate } from "react-router-dom";
-import { artifactKindLabel, openDecisions } from "@inference-hackathon/core";
+import { activityFeed, artifactKindLabel } from "@inference-hackathon/core";
 import { Composer } from "../components/Composer";
 import { Message } from "../components/Message";
+import { ActivityItem } from "../components/ActivityItem";
 import { ArtifactCard } from "../components/ArtifactCard";
 import { useSession } from "../state/SessionContext";
 
 /**
  * Home base, top to bottom: the task, the chat and activity history with the
- * orchestrator (where agents' questions surface as clickable activity), and
- * the artifacts the orchestrator produced. Clicking a question or an artifact
- * opens that artifact's screen.
+ * orchestrator (where agents' background work and questions surface as feed
+ * entries), and the artifacts the orchestrator produced. Clicking a question or
+ * an artifact opens that artifact's screen.
  */
 export function OrchestrationScreen() {
   const {
@@ -21,7 +22,10 @@ export function OrchestrationScreen() {
     sendToOrchestrator,
   } = useSession();
   const navigate = useNavigate();
-  const open = openDecisions(session);
+  const feed = activityFeed(session);
+  const resolved = new Set(
+    session.decisions.filter((decision) => decision.resolved).map((d) => d.id),
+  );
   // Artifacts whose agent bubbled a question up to the orchestrator: each is a
   // nudge to open that artifact and answer in its thread.
   const needsInput = session.artifacts.filter(
@@ -45,24 +49,23 @@ export function OrchestrationScreen() {
 
         <section className="activity">
           <ol className="activity__feed">
-            {session.conversation.map((message) => (
-              <Message key={message.id} message={message} />
-            ))}
-            {open.map((decision) => (
-              <li key={decision.id}>
-                <button
-                  className="activity-item"
-                  onClick={() => navigate(`/artifact/${decision.artifactId}`)}
-                >
-                  <span className="activity-item__label">
-                    {artifactKindLabel(decision.from)} agent needs input
-                  </span>
-                  <span className="activity-item__text">
-                    {decision.question}
-                  </span>
-                </button>
-              </li>
-            ))}
+            {feed.map((item) =>
+              item.type === "message" ? (
+                <Message key={item.message.id} message={item.message} />
+              ) : (
+                <li key={item.activity.id}>
+                  <ActivityItem
+                    event={item.activity}
+                    resolved={
+                      item.activity.decisionId
+                        ? resolved.has(item.activity.decisionId)
+                        : false
+                    }
+                    onOpen={(id) => navigate(`/artifact/${id}`)}
+                  />
+                </li>
+              ),
+            )}
             {needsInput.map((artifact) => (
               <li key={`needs-input-${artifact.id}`}>
                 <button
@@ -79,11 +82,6 @@ export function OrchestrationScreen() {
               </li>
             ))}
           </ol>
-          {researchPending && (
-            <p className="activity__pending">
-              Researching the repository with Nemotron…
-            </p>
-          )}
           {orchestratorPending && (
             <p className="activity__pending">Orchestrator is thinking…</p>
           )}

@@ -168,6 +168,36 @@ export interface Decision {
   resolved: boolean;
 }
 
+/**
+ * What an agent did, recorded so the orchestrator feed keeps a durable trace of
+ * background work rather than flashing a pill that vanishes when the work lands.
+ * `research` and `draft` are lifecycle events; `decision-raised` and
+ * `decision-resolved` bookend a {@link Decision} so the back-and-forth survives
+ * after it is answered.
+ */
+export type ActivityKind =
+  | "research"
+  | "draft"
+  | "decision-raised"
+  | "decision-resolved";
+
+export interface ActivityEvent {
+  id: string;
+  kind: ActivityKind;
+  /** The surface this concerns, when it maps to one. */
+  from?: ArtifactKind;
+  /** Artifact to open when the entry is clicked; absent until one exists. */
+  artifactId?: string;
+  /** The decision this entry bookends, for raised and resolved events. */
+  decisionId?: string;
+  /** The line shown in the feed. */
+  text: string;
+  /** True while the work is still running; false once it has landed. */
+  pending?: boolean;
+  /** ISO 8601 timestamp. */
+  at: string;
+}
+
 export interface Session {
   id: string;
   goal: string;
@@ -175,7 +205,14 @@ export interface Session {
   conversation: ChatMessage[];
   artifacts: Artifact[];
   decisions: Decision[];
+  /** A time-ordered log of what the agents did, surfaced in the feed. */
+  activity?: ActivityEvent[];
 }
+
+/** A chat message or an activity event, ready to render in the feed. */
+export type FeedItem =
+  | { type: "message"; at: string; message: ChatMessage }
+  | { type: "activity"; at: string; activity: ActivityEvent };
 
 const ARTIFACT_KIND_LABELS: Record<ArtifactKind, string> = {
   architecture: "Architecture",
@@ -197,4 +234,22 @@ export function findArtifact(
   artifactId: string,
 ): Artifact | undefined {
   return session.artifacts.find((artifact) => artifact.id === artifactId);
+}
+
+/**
+ * Merge the orchestrator conversation and the activity log into one
+ * time-ordered feed. ISO 8601 timestamps sort lexically, so a plain string
+ * compare is chronological; the sort is stable, so messages keep their place
+ * ahead of activity emitted in the same tick.
+ */
+export function activityFeed(session: Session): FeedItem[] {
+  const items: FeedItem[] = [
+    ...session.conversation.map(
+      (message): FeedItem => ({ type: "message", at: message.at, message }),
+    ),
+    ...(session.activity ?? []).map(
+      (activity): FeedItem => ({ type: "activity", at: activity.at, activity }),
+    ),
+  ];
+  return items.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
 }

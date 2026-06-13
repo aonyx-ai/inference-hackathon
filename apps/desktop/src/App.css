@@ -348,6 +348,62 @@ button {
   color: var(--text);
 }
 
+/* A durable record of background agent work — calmer than the accent "needs
+   input" call to action above, since it's history, not a prompt for the human.
+   A button when it opens an artifact, a plain row otherwise. */
+.activity-event {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--border-strong);
+  background: var(--bg-inset);
+}
+
+button.activity-event {
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+button.activity-event:hover {
+  background: var(--bg-raised);
+}
+
+.activity-event__label {
+  flex: none;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.activity-event__text {
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+/* While the work is still running, lift the rail to the accent and let the line
+   breathe with a soft pulse, so it reads as live rather than settled. */
+.activity-event--pending {
+  border-left-color: var(--accent);
+  animation: activity-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes activity-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
 /* ---- Composer (reused by the orchestrator feed and agent threads) -------- */
 
 .composer {

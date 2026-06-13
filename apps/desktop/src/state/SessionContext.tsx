@@ -9,9 +9,11 @@ import {
   type ReactNode,
 } from "react";
 import type {
+  ActivityEvent,
   Artifact,
   Author,
   ChatMessage,
+  Decision,
   GraphBody,
   Session,
 } from "@inference-hackathon/core";
@@ -78,7 +80,9 @@ interface SessionContextValue {
   sendToArtifactAgent: (artifactId: string, text: string) => void;
   /** True while a given artifact's agent is generating a reply. */
   artifactPending: (artifactId: string) => boolean;
-  /** Mark a raised decision as answered. */
+  /** Raise an agent's question to the orchestrator, logged to the feed. */
+  raiseDecision: (decision: Omit<Decision, "resolved">) => void;
+  /** Mark a raised decision as answered, logged to the feed. */
   resolveDecision: (decisionId: string) => void;
 }
 
@@ -97,6 +101,22 @@ function makeMessage(author: Author, text: string): ChatMessage {
 
 function appendMessage(messages: ChatMessage[], message: ChatMessage) {
   return [...messages, message];
+}
+
+let activityCounter = 0;
+function makeActivity(
+  kind: ActivityEvent["kind"],
+  text: string,
+  extra: Partial<Omit<ActivityEvent, "id" | "kind" | "text" | "at">> = {},
+): ActivityEvent {
+  activityCounter += 1;
+  return {
+    id: `activity-${activityCounter}`,
+    kind,
+    text,
+    at: new Date().toISOString(),
+    ...extra,
+  };
 }
 
 export function SessionProvider({
@@ -129,6 +149,27 @@ export function SessionProvider({
       return next;
     });
   }, []);
+
+  // Append an event to the activity log, and update one in place as its work
+  // lands (flipping `pending` off, rewriting its line, attaching an artifact).
+  const addActivity = useCallback((event: ActivityEvent) => {
+    setSession((current) => ({
+      ...current,
+      activity: [...(current.activity ?? []), event],
+    }));
+  }, []);
+
+  const patchActivity = useCallback(
+    (id: string, patch: Partial<ActivityEvent>) => {
+      setSession((current) => ({
+        ...current,
+        activity: (current.activity ?? []).map((event) =>
+          event.id === id ? { ...event, ...patch } : event,
+        ),
+      }));
+    },
+    [],
+  );
 
   // The latest committed session, readable synchronously after an `await`
   // without closing over a stale render.
@@ -191,10 +232,27 @@ export function SessionProvider({
         // Research the repo once; its per-surface context grounds both the
         // domain edit and the architecture draft. Research can fail (no key, no
         // repo) — each still proceeds from the task alone.
+        const researchEvent = makeActivity(
+          "research",
+          "Reading the repository with Nemotron…",
+          { pending: true },
+        );
+        addActivity(researchEvent);
         setResearchPending(true);
         const repoContext = research(text)
+          .then((context) => {
+            patchActivity(researchEvent.id, {
+              pending: false,
+              text: "Read the repository to ground the agents",
+            });
+            return context;
+          })
           .catch((error: unknown) => {
             console.error("Repo research failed:", error);
+            patchActivity(researchEvent.id, {
+              pending: false,
+              text: "Repository research didn't complete",
+            });
             return undefined;
           })
           .finally(() => setResearchPending(false));
@@ -204,6 +262,12 @@ export function SessionProvider({
         if (domainArtifact && domainArtifact.body.type === "graph") {
           const graph = domainArtifact.body;
           const artifactId = domainArtifact.id;
+          const draftEvent = makeActivity(
+            "draft",
+            "Grounding the domain model in the task…",
+            { pending: true, from: "domain", artifactId },
+          );
+          addActivity(draftEvent);
           setArtifactPending(artifactId, true);
           void repoContext
             .then((context) =>
@@ -233,15 +297,28 @@ export function SessionProvider({
                       : item,
                 ),
               }));
+              patchActivity(draftEvent.id, {
+                pending: false,
+                text: "Updated the domain model to reflect the task",
+              });
             })
             .catch((error: unknown) => {
               console.error("Grounding the domain artifact failed:", error);
+              patchActivity(draftEvent.id, {
+                pending: false,
+                text: "Couldn't update the domain model",
+              });
             })
             .finally(() => setArtifactPending(artifactId, false));
         }
 
         // Architecture: the same research grounds the architecture modeler,
         // whose graph lands in the deck when it finishes.
+        const archEvent = makeActivity("draft", "Mapping the architecture…", {
+          pending: true,
+          from: "architecture",
+        });
+        addActivity(archEvent);
         setArchitecturePending(true);
         void repoContext
           .then((context) =>
@@ -252,14 +329,23 @@ export function SessionProvider({
                 : undefined,
             ),
           )
-          .then((artifact) =>
+          .then((artifact) => {
             setSession((current) => ({
               ...current,
               artifacts: [...current.artifacts, artifact],
-            })),
-          )
+            }));
+            patchActivity(archEvent.id, {
+              pending: false,
+              text: "Drafted the architecture component map",
+              artifactId: artifact.id,
+            });
+          })
           .catch((error: unknown) => {
             console.error("Architecture artifact generation failed:", error);
+            patchActivity(archEvent.id, {
+              pending: false,
+              text: "Couldn't draft the architecture map",
+            });
           })
           .finally(() => setArchitecturePending(false));
       }
@@ -288,7 +374,7 @@ export function SessionProvider({
         })
         .finally(() => setOrchestratorPending(false));
     },
-    [setArtifactPending],
+    [setArtifactPending, addActivity, patchActivity],
   );
 
   // A snapshot of one artifact in the shape the orchestrator's review reasons
@@ -531,12 +617,38 @@ export function SessionProvider({
     [pendingArtifacts],
   );
 
-  const resolveDecision = useCallback((decisionId: string) => {
+  const raiseDecision = useCallback((decision: Omit<Decision, "resolved">) => {
+    const raised = makeActivity("decision-raised", decision.question, {
+      from: decision.from,
+      artifactId: decision.artifactId,
+      decisionId: decision.id,
+    });
     setSession((current) => ({
       ...current,
-      decisions: current.decisions.map((decision) =>
-        decision.id === decisionId ? { ...decision, resolved: true } : decision,
+      decisions: [...current.decisions, { ...decision, resolved: false }],
+      activity: [...(current.activity ?? []), raised],
+    }));
+  }, []);
+
+  const resolveDecision = useCallback((decisionId: string) => {
+    const decision = sessionRef.current.decisions.find(
+      (item) => item.id === decisionId,
+    );
+    const resolved = decision
+      ? makeActivity("decision-resolved", `Answered: ${decision.question}`, {
+          from: decision.from,
+          artifactId: decision.artifactId,
+          decisionId,
+        })
+      : undefined;
+    setSession((current) => ({
+      ...current,
+      decisions: current.decisions.map((item) =>
+        item.id === decisionId ? { ...item, resolved: true } : item,
       ),
+      activity: resolved
+        ? [...(current.activity ?? []), resolved]
+        : current.activity,
     }));
   }, []);
 
@@ -550,6 +662,7 @@ export function SessionProvider({
       sendToOrchestrator,
       sendToArtifactAgent,
       artifactPending,
+      raiseDecision,
       resolveDecision,
     }),
     [
@@ -561,6 +674,7 @@ export function SessionProvider({
       sendToOrchestrator,
       sendToArtifactAgent,
       artifactPending,
+      raiseDecision,
       resolveDecision,
     ],
   );
