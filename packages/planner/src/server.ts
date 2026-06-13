@@ -1,10 +1,11 @@
+import { domainEditSchema, withGraphContext } from "./domain-agent.ts";
 import { mastra } from "./mastra.ts";
 import { generateDomainArtifact } from "./domain.ts";
 
 /**
- * A single turn in the orchestrator chat, in the provider-agnostic shape the
- * frontend sends. The desktop app maps its author-tagged messages down to these
- * roles before posting, so the server never needs to know about artifacts.
+ * A single turn in the chat, in the provider-agnostic shape the frontend sends.
+ * The desktop app maps its author-tagged messages down to these roles before
+ * posting, so the server never needs to know about artifacts.
  */
 export interface ChatTurn {
   role: "user" | "assistant";
@@ -15,15 +16,23 @@ export interface OrchestratorChatRequest {
   messages: ChatTurn[];
 }
 
+/** The goal the domain modeler scopes into the first domain artifact. */
 export interface DomainArtifactRequest {
   goal: string;
+}
+
+/** The current domain-model graph the agent edits, sent alongside the chat. */
+export interface DomainChatRequest {
+  messages: ChatTurn[];
+  body: { type: "graph"; nodes: unknown[]; edges: unknown[] };
 }
 
 const PORT = Number(process.env.PLANNER_PORT ?? 8787);
 
 const orchestrator = mastra.getAgent("orchestrator");
+const domain = mastra.getAgent("domain");
 
-function isChatRequest(value: unknown): value is OrchestratorChatRequest {
+function hasMessages(value: unknown): value is { messages: ChatTurn[] } {
   return (
     typeof value === "object" &&
     value !== null &&
@@ -36,6 +45,30 @@ function isDomainRequest(value: unknown): value is DomainArtifactRequest {
     typeof value === "object" &&
     value !== null &&
     typeof (value as { goal?: unknown }).goal === "string"
+  );
+}
+
+function isDomainChatRequest(value: unknown): value is DomainChatRequest {
+  if (!hasMessages(value)) return false;
+  const graph = (value as { body?: unknown }).body;
+  return (
+    typeof graph === "object" &&
+    graph !== null &&
+    (graph as { type?: unknown }).type === "graph" &&
+    Array.isArray((graph as { nodes?: unknown }).nodes) &&
+    Array.isArray((graph as { edges?: unknown }).edges)
+  );
+}
+
+/**
+ * Narrow each turn's role to a literal so it matches the AI SDK's discriminated
+ * message union.
+ */
+function toModelMessages(turns: ChatTurn[]) {
+  return turns.map((turn) =>
+    turn.role === "user"
+      ? ({ role: "user", content: turn.content } as const)
+      : ({ role: "assistant", content: turn.content } as const),
   );
 }
 
@@ -82,19 +115,14 @@ const server = Bun.serve({
       } catch {
         return json({ error: "Invalid JSON body" }, 400);
       }
-      if (!isChatRequest(body)) {
+      if (!hasMessages(body)) {
         return json({ error: "Expected { messages: ChatTurn[] }" }, 400);
       }
 
       try {
-        // Narrow each turn's role to a literal so it matches the AI SDK's
-        // discriminated message union.
-        const messages = body.messages.map((turn) =>
-          turn.role === "user"
-            ? ({ role: "user", content: turn.content } as const)
-            : ({ role: "assistant", content: turn.content } as const),
+        const result = await orchestrator.generate(
+          toModelMessages(body.messages),
         );
-        const result = await orchestrator.generate(messages);
         return json({ text: result.text });
       } catch (error) {
         const message =
@@ -104,6 +132,8 @@ const server = Bun.serve({
       }
     }
 
+    // The orchestrator's first prompt spins up a domain artifact: the domain
+    // modeler scopes the goal into a fresh graph the deck renders.
     if (
       request.method === "POST" &&
       url.pathname === "/api/orchestrator/domain"
@@ -125,6 +155,41 @@ const server = Bun.serve({
         const message =
           error instanceof Error ? error.message : "Unknown error";
         console.error("Domain artifact generation failed:", message);
+        return json({ error: message }, 502);
+      }
+    }
+
+    // The domain-model agent edits a graph in place: it gets the current graph
+    // plus the chat and returns a reply and the complete updated graph, which
+    // the webview drops straight back into the artifact's body.
+    if (request.method === "POST" && url.pathname === "/api/domain/chat") {
+      let body: unknown;
+      try {
+        body = await request.json();
+      } catch {
+        return json({ error: "Invalid JSON body" }, 400);
+      }
+      if (!isDomainChatRequest(body)) {
+        return json(
+          { error: "Expected { messages: ChatTurn[], body: GraphBody }" },
+          400,
+        );
+      }
+
+      try {
+        const result = await domain.generate(
+          toModelMessages(withGraphContext(body.body, body.messages)),
+          { structuredOutput: { schema: domainEditSchema } },
+        );
+        const edit = result.object;
+        return json({
+          text: edit.reply,
+          body: { type: "graph", nodes: edit.nodes, edges: edit.edges },
+        });
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Unknown error";
+        console.error("Domain agent generation failed:", message);
         return json({ error: message }, 502);
       }
     }

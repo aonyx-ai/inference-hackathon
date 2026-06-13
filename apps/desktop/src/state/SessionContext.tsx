@@ -13,7 +13,9 @@ import type {
   ChatMessage,
   Session,
 } from "@inference-hackathon/core";
+import { findArtifact } from "@inference-hackathon/core";
 import { askOrchestrator, createDomainArtifact } from "../api/orchestrator";
+import { askDomainAgent } from "../api/artifactAgent";
 
 /** A fresh session with nothing in it; the orchestrator fills it as you talk. */
 const emptySession: Session = {
@@ -34,6 +36,8 @@ interface SessionContextValue {
   sendToOrchestrator: (text: string) => void;
   /** Send a message to a single artifact's agent on its screen. */
   sendToArtifactAgent: (artifactId: string, text: string) => void;
+  /** True while a given artifact's agent is generating a reply. */
+  artifactPending: (artifactId: string) => boolean;
   /** Mark a raised decision as answered. */
   resolveDecision: (decisionId: string) => void;
 }
@@ -66,6 +70,20 @@ export function SessionProvider({
   const [session, setSession] = useState<Session>(initialSession);
   const [orchestratorPending, setOrchestratorPending] = useState(false);
   const [domainPending, setDomainPending] = useState(false);
+  // Ids of artifacts whose agent is mid-reply, so each screen can show its own
+  // pending state without blocking the others.
+  const [pendingArtifacts, setPendingArtifacts] = useState<Set<string>>(
+    () => new Set(),
+  );
+
+  const setArtifactPending = useCallback((artifactId: string, on: boolean) => {
+    setPendingArtifacts((current) => {
+      const next = new Set(current);
+      if (on) next.add(artifactId);
+      else next.delete(artifactId);
+      return next;
+    });
+  }, []);
 
   // The latest committed session, readable synchronously after an `await`
   // without closing over a stale render.
@@ -130,23 +148,62 @@ export function SessionProvider({
 
   const sendToArtifactAgent = useCallback(
     (artifactId: string, text: string) => {
+      const artifact = findArtifact(sessionRef.current, artifactId);
+      if (!artifact) return;
+
+      const userMessage = makeMessage("user", text);
+      const conversation = appendMessage(artifact.conversation, userMessage);
       setSession((current) => ({
         ...current,
-        artifacts: current.artifacts.map(
-          (artifact): Artifact =>
-            artifact.id === artifactId
-              ? {
-                  ...artifact,
-                  conversation: appendMessage(
-                    artifact.conversation,
-                    makeMessage("user", text),
-                  ),
-                }
-              : artifact,
+        artifacts: current.artifacts.map((item) =>
+          item.id === artifactId
+            ? {
+                ...item,
+                conversation: appendMessage(item.conversation, userMessage),
+              }
+            : item,
         ),
       }));
+
+      // Only the domain model — a diffable graph — has an agent wired up so far.
+      // Other surfaces still just record the message until their agents land.
+      if (artifact.body.type !== "graph") return;
+      const graph = artifact.body;
+      const kind = artifact.kind;
+
+      const reply = (message: ChatMessage, body?: Artifact["body"]) =>
+        setSession((current) => ({
+          ...current,
+          artifacts: current.artifacts.map(
+            (item): Artifact =>
+              item.id === artifactId
+                ? {
+                    ...item,
+                    conversation: appendMessage(item.conversation, message),
+                    ...(body
+                      ? { body, status: "ready", staleReason: undefined }
+                      : {}),
+                  }
+                : item,
+          ),
+        }));
+
+      setArtifactPending(artifactId, true);
+      void askDomainAgent(graph, conversation)
+        .then((result) => reply(makeMessage(kind, result.text), result.body))
+        .catch((error: unknown) => {
+          const message =
+            error instanceof Error ? error.message : "Something went wrong";
+          reply(makeMessage(kind, `⚠️ ${message}`));
+        })
+        .finally(() => setArtifactPending(artifactId, false));
     },
-    [],
+    [setArtifactPending],
+  );
+
+  const artifactPending = useCallback(
+    (artifactId: string) => pendingArtifacts.has(artifactId),
+    [pendingArtifacts],
   );
 
   const resolveDecision = useCallback((decisionId: string) => {
@@ -165,6 +222,7 @@ export function SessionProvider({
       domainPending,
       sendToOrchestrator,
       sendToArtifactAgent,
+      artifactPending,
       resolveDecision,
     }),
     [
@@ -173,6 +231,7 @@ export function SessionProvider({
       domainPending,
       sendToOrchestrator,
       sendToArtifactAgent,
+      artifactPending,
       resolveDecision,
     ],
   );

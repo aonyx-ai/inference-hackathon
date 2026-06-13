@@ -14,7 +14,7 @@ import { useSession } from "../state/SessionContext";
 export function ArtifactScreen() {
   const { artifactId } = useParams();
   const navigate = useNavigate();
-  const { session, sendToArtifactAgent } = useSession();
+  const { session, sendToArtifactAgent, artifactPending } = useSession();
   const artifact = artifactId ? findArtifact(session, artifactId) : undefined;
 
   const back = () => navigate("/");
@@ -59,6 +59,7 @@ export function ArtifactScreen() {
             messages={artifact.conversation}
             placeholder="Ask this agent…"
             onSend={(text) => sendToArtifactAgent(artifact.id, text)}
+            pending={artifactPending(artifact.id)}
           />
         </aside>
       </div>
