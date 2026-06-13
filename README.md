@@ -81,6 +81,14 @@ domain model speak one language.
 | Structured artifacts      | Diffable graphs with stable IDs, not prose    |
 | oxc + tsgo + Flox         | Fast, reproducible lint, format, and builds   |
 
+### Workflow Model
+
+- Orchestration uses Mastra **workflows**, not agent networks.
+- The initial plan is one suspendable workflow run (clarify and approve are
+  human-in-the-loop suspensions); the MetaLoop is event-triggered reconcile
+  runs.
+- Agents run on Mastra in a Bun sidecar — Mastra is Node, Tauri is not.
+
 ### Repository Structure
 
 - `apps/` — the platform-specific shell (currently a Tauri + React app).
