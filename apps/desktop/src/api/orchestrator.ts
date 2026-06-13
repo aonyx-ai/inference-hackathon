@@ -29,6 +29,33 @@ export async function askOrchestrator(
   return data.text ?? "";
 }
 
+/** The title the namer returns, before it lands as the session goal. */
+interface TaskTitleResponse {
+  title?: string;
+  error?: string;
+}
+
+/**
+ * Ask the task namer to distill an opening prompt into a short title for the
+ * task header. Throws with the server's message on failure so the caller can
+ * fall back to showing the raw prompt.
+ */
+export async function createTaskTitle(prompt: string): Promise<string> {
+  const response = await fetch(`${API_BASE}/api/orchestrator/title`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt }),
+  });
+
+  const data = (await response.json()) as TaskTitleResponse;
+  if (!response.ok) {
+    throw new Error(
+      data.error ?? `Task title request failed (${response.status})`,
+    );
+  }
+  return data.title ?? "";
+}
+
 /** One surface's findings from the repo-research stage, as the server sends them. */
 export interface SurfaceFindings {
   summary: string;

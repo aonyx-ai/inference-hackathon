@@ -1,6 +1,7 @@
 import { domainEditSchema, withGraphContext } from "./domain-agent.ts";
 import { mastra } from "./mastra.ts";
 import { generateDomainArtifact } from "./domain.ts";
+import { generateTaskTitle } from "./title.ts";
 import { researchRepo } from "./research.ts";
 
 /**
@@ -15,6 +16,11 @@ export interface ChatTurn {
 
 export interface OrchestratorChatRequest {
   messages: ChatTurn[];
+}
+
+/** The opening prompt the namer distills into a short task title. */
+export interface TaskTitleRequest {
+  prompt: string;
 }
 
 /** The goal the domain modeler scopes into the first domain artifact. */
@@ -63,6 +69,14 @@ function isDomainRequest(value: unknown): value is DomainArtifactRequest {
     typeof value === "object" &&
     value !== null &&
     typeof (value as { goal?: unknown }).goal === "string"
+  );
+}
+
+function isTitleRequest(value: unknown): value is TaskTitleRequest {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as { prompt?: unknown }).prompt === "string"
   );
 }
 
@@ -182,6 +196,33 @@ const server = Bun.serve({
         const message =
           error instanceof Error ? error.message : "Unknown error";
         console.error("Domain artifact generation failed:", message);
+        return json({ error: message }, 502);
+      }
+    }
+
+    // The opening prompt also gets distilled into a short task title for the
+    // header, so the developer sees a clean heading rather than their raw text.
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/orchestrator/title"
+    ) {
+      let body: unknown;
+      try {
+        body = await request.json();
+      } catch {
+        return json({ error: "Invalid JSON body" }, 400);
+      }
+      if (!isTitleRequest(body)) {
+        return json({ error: "Expected { prompt: string }" }, 400);
+      }
+
+      try {
+        const title = await generateTaskTitle(body.prompt);
+        return json({ title });
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Unknown error";
+        console.error("Task title generation failed:", message);
         return json({ error: message }, 502);
       }
     }
