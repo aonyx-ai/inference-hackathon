@@ -23,6 +23,7 @@ import {
   research,
 } from "../api/orchestrator";
 import { askDomainAgent } from "../api/artifactAgent";
+import { designDemoArtifact } from "../data/designDemo";
 
 /** A fresh session with nothing in it; the orchestrator fills it as you talk. */
 const emptySession: Session = {
@@ -102,12 +103,17 @@ export function SessionProvider({
 
   // The artifacts live on disk in the codebase being scoped; the planner reads
   // them and we pull them into the deck when the session opens. From there the
-  // domain artifact is iterated on through its own agent.
+  // domain artifact is iterated on through its own agent. The UX design artifact
+  // is seeded alongside them — canned until a UX agent can emit one — so the
+  // side-by-side design surface is visible in the deck.
   useEffect(() => {
     if (!autoLoad) return;
     void fetchArtifacts()
       .then((artifacts) => {
-        setSession((current) => ({ ...current, artifacts }));
+        setSession((current) => ({
+          ...current,
+          artifacts: [...artifacts, designDemoArtifact],
+        }));
       })
       .catch((error: unknown) => {
         console.error("Loading artifacts failed:", error);
