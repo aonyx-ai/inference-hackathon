@@ -12,13 +12,8 @@ import { useSession } from "../state/SessionContext";
  * opens that artifact's screen.
  */
 export function OrchestrationScreen() {
-  const {
-    session,
-    orchestratorPending,
-    researchPending,
-    domainPending,
-    sendToOrchestrator,
-  } = useSession();
+  const { session, orchestratorPending, researchPending, sendToOrchestrator } =
+    useSession();
   const navigate = useNavigate();
   const open = openDecisions(session);
   const started = session.conversation.length > 0;
@@ -77,23 +72,13 @@ export function OrchestrationScreen() {
           />
         </section>
 
-        {(session.artifacts.length > 0 || domainPending) && (
+        {session.artifacts.length > 0 && (
           <section className="artifacts">
             <h2 className="artifacts__title">Artifacts</h2>
             <div className="artifacts__list">
               {session.artifacts.map((artifact) => (
                 <ArtifactCard key={artifact.id} artifact={artifact} />
               ))}
-              {domainPending && (
-                <div className="card card--pending">
-                  <span className="card__kind">Domain Model</span>
-                  <p className="card__summary">
-                    {researchPending
-                      ? "Reading the repository…"
-                      : "Modeling the domain…"}
-                  </p>
-                </div>
-              )}
             </div>
           </section>
         )}
