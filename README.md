@@ -43,6 +43,20 @@ coding agent.
 
 ## How It Works
 
+A single orchestrator drives the session. It interrogates the task and explores
+the codebase, asking clarifying questions until the goal is unambiguous. From
+there it splits the work along the three surfaces a change actually moves
+along — architecture, the domain model, and the user experience — and handles
+each as its own track rather than one undifferentiated plan.
+
+Every surface gets a specialist. A research agent reads the repo for that
+surface, then an artifact agent drafts the change in the form that surface is
+best reviewed in: a diffable graph for architecture and the domain model, a
+wireframe or high-fidelity mock for the UX. The tracks run in parallel and
+stream back to the UI, so you review the change the way you reason about it —
+one surface at a time, each in its own language — rather than digging the
+architecture, data, and interface implications out of a wall of prose.
+
 ```mermaid
 sequenceDiagram
     actor User
