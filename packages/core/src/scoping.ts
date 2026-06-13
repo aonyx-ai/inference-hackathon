@@ -262,10 +262,13 @@ export function findArtifact(
 }
 
 /**
- * Merge the orchestrator conversation and the activity log into one
- * time-ordered feed. ISO 8601 timestamps sort lexically, so a plain string
- * compare is chronological; the sort is stable, so messages keep their place
- * ahead of activity emitted in the same tick.
+ * Merge the orchestrator conversation and the activity log into one feed.
+ * Settled items — messages and finished activity — sort chronologically: ISO
+ * 8601 timestamps sort lexically, so a plain string compare is chronological,
+ * and the sort is stable so messages keep their place ahead of activity emitted
+ * in the same tick. Activity still running (`pending`) is held at the end of the
+ * feed, in start order, so an unfinished task stays pinned to the bottom until
+ * it lands and drops back into the timeline where its timestamp belongs.
  */
 export function activityFeed(session: Session): FeedItem[] {
   const items: FeedItem[] = [
@@ -276,5 +279,11 @@ export function activityFeed(session: Session): FeedItem[] {
       (activity): FeedItem => ({ type: "activity", at: activity.at, activity }),
     ),
   ];
-  return items.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
+  const byTime = (a: FeedItem, b: FeedItem) =>
+    a.at < b.at ? -1 : a.at > b.at ? 1 : 0;
+  const isPending = (item: FeedItem) =>
+    item.type === "activity" && item.activity.pending === true;
+  const settled = items.filter((item) => !isPending(item)).sort(byTime);
+  const inProgress = items.filter(isPending).sort(byTime);
+  return [...settled, ...inProgress];
 }

@@ -250,7 +250,11 @@ const server = Bun.serve({
           { structuredOutput: { schema: orchestratorReplySchema } },
         );
         const reply = result.object;
-        return json({ text: reply.reply, readyForPlan: reply.readyForPlan });
+        return json({
+          text: reply.reply,
+          ready: reply.readyToScope,
+          readyForPlan: reply.readyForPlan,
+        });
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Unknown error";

@@ -4,7 +4,7 @@ import { Markdown } from "./Markdown";
 
 export function authorLabel(author: Author): string {
   if (author === "user") return "You";
-  if (author === "orchestrator") return "Orchestrator";
+  if (author === "orchestrator") return "Lontra";
   return `${artifactKindLabel(author)} agent`;
 }
 

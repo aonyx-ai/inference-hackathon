@@ -6,18 +6,22 @@ import type {
 } from "@inference-hackathon/core";
 import { API_BASE, toTurns } from "./planner";
 
-/** The orchestrator's reply: its prose plus whether the developer is done. */
+/** The orchestrator's reply: its prose plus the two lifecycle cues it owns. */
 export interface OrchestratorReply {
   text: string;
+  /** True once the orchestrator judges the goal clear enough to draft artifacts. */
+  ready: boolean;
   /** True once the developer has signaled to proceed; cues plan synthesis. */
   readyForPlan: boolean;
 }
 
 /**
  * Ask the orchestrator agent for its next reply. Posts the conversation so far
- * to the planner server and returns its prose plus whether the developer has
- * signaled the scoping is done — the cue to synthesize the plan. Throws with the
- * server's message when generation fails — usually a missing or rejected key.
+ * to the planner server and returns its prose plus the orchestrator's two cues:
+ * whether the goal is now clear enough to fan out to the artifact agents, and
+ * whether the developer has signaled scoping is done so the plan can be
+ * synthesized. Throws with the server's message when generation fails — usually
+ * a missing or rejected API key.
  */
 export async function askOrchestrator(
   conversation: ChatMessage[],
@@ -30,6 +34,7 @@ export async function askOrchestrator(
 
   const data = (await response.json()) as {
     text?: string;
+    ready?: boolean;
     readyForPlan?: boolean;
     error?: string;
   };
@@ -38,7 +43,11 @@ export async function askOrchestrator(
       data.error ?? `Orchestrator request failed (${response.status})`,
     );
   }
-  return { text: data.text ?? "", readyForPlan: data.readyForPlan ?? false };
+  return {
+    text: data.text ?? "",
+    ready: data.ready ?? false,
+    readyForPlan: data.readyForPlan ?? false,
+  };
 }
 
 /** The title the namer returns, before it lands as the session goal. */

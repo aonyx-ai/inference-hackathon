@@ -105,6 +105,45 @@ describe("activityFeed", () => {
     ]);
   });
 
+  test("pins still-running activity to the end until it lands", () => {
+    const session: Session = {
+      ...makeSession(),
+      conversation: [
+        { id: "m1", author: "user", text: "go", at: "2026-06-13T10:00:00Z" },
+        {
+          id: "m2",
+          author: "orchestrator",
+          text: "on it",
+          at: "2026-06-13T10:00:05Z",
+        },
+      ],
+      activity: [
+        {
+          id: "a1",
+          kind: "research",
+          text: "Reading the repository…",
+          pending: true,
+          at: "2026-06-13T10:00:01Z",
+        },
+        {
+          id: "a2",
+          kind: "draft",
+          text: "Updated the domain model",
+          at: "2026-06-13T10:00:03Z",
+        },
+      ],
+    };
+
+    // The pending research started before the second message but is held below
+    // it; the settled draft keeps its chronological place.
+    const feed = activityFeed(session);
+    expect(
+      feed.map((item) =>
+        item.type === "message" ? item.message.id : item.activity.id,
+      ),
+    ).toEqual(["m1", "a2", "m2", "a1"]);
+  });
+
   test("treats a missing activity log as empty", () => {
     const session: Session = {
       ...makeSession(),
