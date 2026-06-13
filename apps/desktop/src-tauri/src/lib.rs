@@ -8,8 +8,20 @@ pub mod commands {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init())
+    #[allow(unused_mut)]
+    let mut builder = tauri::Builder::default().plugin(tauri_plugin_opener::init());
+
+    // Dev-only tooling plugins — never compiled into release builds.
+    #[cfg(debug_assertions)]
+    {
+        builder = builder.plugin(tauri_plugin_mcp::init_with_config(
+            tauri_plugin_mcp::PluginConfig::new("Inference Hackathon".to_string())
+                .start_socket_server(true)
+                .socket_path(std::path::PathBuf::from("/tmp/tauri-mcp.sock")),
+        ));
+    }
+
+    builder
         .invoke_handler(tauri::generate_handler![commands::greet])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
