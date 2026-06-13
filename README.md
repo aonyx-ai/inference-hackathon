@@ -6,6 +6,12 @@ Built for [Whale]'s [Inference Hackathon], which asks one question:
 
 > If you had unlimited compute, what autonomous agent system would you build?
 
+![Chatting with the agent about the work][screenshot-chat]
+_Chat with the agent about the work_
+
+![Reviewing the plan as high-fidelity diffs][screenshot-diff]
+_Review the plan as high-fidelity diffs_
+
 ## The Bet
 
 Coding harnesses like Claude Code keep getting better at carrying out complex
@@ -147,5 +153,7 @@ Logic lives in platform-independent `packages/` (no Tauri, easy to test);
 [mastra]: https://github.com/mastra-ai/mastra
 [nemotron]: https://developer.nvidia.com/nemotron
 [react]: https://react.dev
+[screenshot-chat]: ./screenshot-chat.png
+[screenshot-diff]: ./screenshot-diff.png
 [tauri]: https://tauri.app
 [whale]: https://www.whale-academy.com/
