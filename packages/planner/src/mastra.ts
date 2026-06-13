@@ -1,0 +1,13 @@
+import { Mastra } from "@mastra/core/mastra";
+import { LibSQLStore } from "@mastra/libsql";
+
+import { intakeWorkflow } from "./intake.ts";
+
+/**
+ * In-memory Mastra instance for the spike. The real app points LibSQLStore at a
+ * file in the Tauri app's data directory so suspended runs survive restarts.
+ */
+export const mastra = new Mastra({
+  storage: new LibSQLStore({ id: "planner", url: ":memory:" }),
+  workflows: { intake: intakeWorkflow },
+});

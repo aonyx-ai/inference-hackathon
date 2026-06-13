@@ -1,0 +1,14 @@
+{
+  "name": "@inference-hackathon/planner",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@mastra/core": "^1.42.0",
+    "@mastra/libsql": "^1.13.0",
+    "zod": "^4.4.3"
+  }
+}
