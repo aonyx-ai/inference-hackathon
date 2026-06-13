@@ -19,3 +19,6 @@ gen/schemas/
 .env
 .env.*
 !.env.example
+
+# Bakeoff harness scratch dir
+.bakeoff/
