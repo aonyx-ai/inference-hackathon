@@ -1,29 +1,50 @@
-import { afterEach, expect, test } from "bun:test";
-import { render, screen } from "@testing-library/react";
+import { expect, test } from "bun:test";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { clearMocks, mockIPC } from "@tauri-apps/api/mocks";
 
+import { renderWithProviders } from "../test/render.tsx";
 import App from "./App.tsx";
 
-afterEach(() => {
-  clearMocks();
-});
-
-test("greets the entered name via the mocked greet command", async () => {
-  mockIPC((cmd, args) => {
-    if (cmd === "greet") {
-      const { name } = args as { name: string };
-      return `Hello, ${name}! You've been greeted from Rust!`;
-    }
-  });
-
-  render(<App />);
-
-  const user = userEvent.setup();
-  await user.type(screen.getByLabelText("Name"), "Alice");
-  await user.click(screen.getByRole("button", { name: "Greet" }));
+test("orchestration screen shows the task, an agent question, and the artifacts", () => {
+  renderWithProviders(<App />);
 
   expect(
-    await screen.findByText("Hello, Alice! You've been greeted from Rust!"),
+    screen.getByRole("heading", {
+      name: "Let users export their dashboard as a PDF",
+    }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByText(/Architecture agent needs input/),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole("heading", { name: "PDF rendering pipeline" }),
+  ).toBeInTheDocument();
+});
+
+test("clicking an agent question opens that artifact's screen and back returns", async () => {
+  renderWithProviders(<App />);
+  const user = userEvent.setup();
+
+  await user.click(screen.getByText(/Architecture agent needs input/));
+
+  // The artifact agent screen is showing: its agent composer and back control.
+  expect(screen.getByPlaceholderText("Ask this agent…")).toBeInTheDocument();
+  const back = screen.getByRole("button", { name: "← Orchestration" });
+  expect(back).toBeInTheDocument();
+
+  await user.click(back);
+  expect(
+    screen.getByRole("heading", {
+      name: "Let users export their dashboard as a PDF",
+    }),
+  ).toBeInTheDocument();
+});
+
+test("a stale artifact surfaces a drift banner explaining the drift", () => {
+  renderWithProviders(<App />, { route: "/artifact/a-ux" });
+
+  expect(screen.getByText("May be stale")).toBeInTheDocument();
+  expect(
+    screen.getByText(/synchronous vs\. queued rendering/),
   ).toBeInTheDocument();
 });
