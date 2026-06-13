@@ -7,10 +7,12 @@ import { domainEditSchema } from "./domain-agent.ts";
 import { withGraphContext } from "./graph-context.ts";
 import { mastra } from "./mastra.ts";
 import { parseMermaidClassDiagram } from "./mermaid-graph.ts";
+import { orchestratorReplySchema } from "./orchestrator.ts";
 import {
   reviewArtifactChange,
   type ReviewInput,
 } from "./orchestrator-review.ts";
+import { synthesizePlan, type PlanArtifactInput } from "./plan.ts";
 import { researchRepo } from "./research.ts";
 import { generateTaskTitle } from "./title.ts";
 
@@ -44,6 +46,12 @@ export interface ArchitectureArtifactRequest {
 export interface DomainChatRequest {
   messages: ChatTurn[];
   body: { type: "graph"; nodes: unknown[]; edges: unknown[] };
+}
+
+/** The goal and finished artifacts the synthesizer folds into one plan. */
+export interface PlanRequest {
+  goal: string;
+  artifacts: PlanArtifactInput[];
 }
 
 /** Kick off the repo-research fan-out over a checkout on the local machine. */
@@ -166,6 +174,15 @@ function isReviewRequest(value: unknown): value is ReviewInput {
   );
 }
 
+function isPlanRequest(value: unknown): value is PlanRequest {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as { goal?: unknown }).goal === "string" &&
+    Array.isArray((value as { artifacts?: unknown }).artifacts)
+  );
+}
+
 function isResearchRequest(value: unknown): value is RepoResearchRequest {
   if (typeof value !== "object" || value === null) return false;
   const root = (value as { root?: unknown }).root;
@@ -248,8 +265,10 @@ const server = Bun.serve({
       try {
         const result = await orchestrator.generate(
           toModelMessages(body.messages),
+          { structuredOutput: { schema: orchestratorReplySchema } },
         );
-        return json({ text: result.text });
+        const reply = result.object;
+        return json({ text: reply.reply, readyForPlan: reply.readyForPlan });
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Unknown error";
@@ -419,6 +438,34 @@ const server = Bun.serve({
         const message =
           error instanceof Error ? error.message : "Unknown error";
         console.error("Orchestrator review failed:", message);
+        return json({ error: message }, 502);
+      }
+    }
+
+    // When the developer is done shaping the artifacts, the plan synthesizer
+    // reads every diff together and returns the implementation plan — an
+    // overview plus ordered steps — which the deck renders below the artifacts.
+    if (request.method === "POST" && url.pathname === "/api/plan") {
+      let body: unknown;
+      try {
+        body = await request.json();
+      } catch {
+        return json({ error: "Invalid JSON body" }, 400);
+      }
+      if (!isPlanRequest(body)) {
+        return json(
+          { error: "Expected { goal: string, artifacts: Artifact[] }" },
+          400,
+        );
+      }
+
+      try {
+        const plan = await synthesizePlan(body.goal, body.artifacts);
+        return json(plan);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Unknown error";
+        console.error("Plan synthesis failed:", message);
         return json({ error: message }, 502);
       }
     }

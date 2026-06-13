@@ -1,4 +1,5 @@
 import { Agent } from "@mastra/core/agent";
+import { z } from "zod";
 
 import { orchestratorModel } from "./models.ts";
 
@@ -28,7 +29,32 @@ describe how you would scope the work across the three surfaces.
 
 Be concise and direct. Write in plain prose, not bullet-point dumps. You are a
 thoughtful technical partner, not a form to fill in.
+
+The developer decides when scoping is done. When they signal they are satisfied
+and want to move forward — "looks good", "that's right", "let's go", "ship it",
+or anything that plainly means proceed — set readyForPlan to true. That is the
+cue to draw the scoped artifacts together into an implementation plan, so keep
+your reply short and confirm you are pulling it together. Until then readyForPlan
+is false. Never set it on the opening message, and never fish for it; wait for
+the developer to land there on their own.
 `.trim();
+
+/**
+ * What the orchestrator returns each turn: its prose reply plus whether the
+ * developer has signaled the scoping is done. When `readyForPlan` flips true the
+ * deck synthesizes the plan from the artifacts — there is no button; the
+ * orchestrator reads the cue from the conversation.
+ */
+export const orchestratorReplySchema = z.object({
+  reply: z.string().describe("Your message to the developer, in plain prose."),
+  readyForPlan: z
+    .boolean()
+    .describe(
+      "True only once the developer has signaled they are satisfied and want to proceed.",
+    ),
+});
+
+export type OrchestratorReply = z.infer<typeof orchestratorReplySchema>;
 
 export const orchestrator = new Agent({
   id: "orchestrator",

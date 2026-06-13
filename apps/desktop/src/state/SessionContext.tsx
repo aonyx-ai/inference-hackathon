@@ -27,6 +27,7 @@ import {
   graphDigest,
   research,
   reviewArtifactChange,
+  synthesizePlan,
   type Review,
   type ReviewArtifactInput,
 } from "../api/orchestrator";
@@ -74,6 +75,8 @@ interface SessionContextValue {
   architecturePending: boolean;
   /** True while the orchestrator is reviewing a change to decide what it ripples to. */
   orchestratorReviewing: boolean;
+  /** True while the synthesizer is folding the artifacts into a plan. */
+  planPending: boolean;
   /** Send a message to the orchestrator on the orchestration screen. */
   sendToOrchestrator: (text: string) => void;
   /** Send a message to a single artifact's agent on its screen. */
@@ -135,6 +138,7 @@ export function SessionProvider({
   const [researchPending, setResearchPending] = useState(false);
   const [architecturePending, setArchitecturePending] = useState(false);
   const [reviewPending, setReviewPending] = useState(false);
+  const [planPending, setPlanPending] = useState(false);
   // Ids of artifacts whose agent is mid-reply, so each screen can show its own
   // pending state without blocking the others.
   const [pendingArtifacts, setPendingArtifacts] = useState<Set<string>>(
@@ -194,6 +198,36 @@ export function SessionProvider({
         console.error("Loading artifacts failed:", error);
       });
   }, [autoLoad]);
+
+  // Fold every artifact's diff into one textual plan. This isn't a button the
+  // developer presses — the orchestrator reads from the conversation that they
+  // are satisfied and calls this, so the plan just appears below the deck.
+  // Failures surface as an orchestrator message, like any other reply.
+  const synthesizePlanFromArtifacts = useCallback(() => {
+    const { goal, artifacts } = sessionRef.current;
+    if (artifacts.length === 0) return;
+
+    setPlanPending(true);
+    void synthesizePlan(goal, artifacts)
+      .then((plan) => {
+        setSession((current) => ({ ...current, plan }));
+      })
+      .catch((error: unknown) => {
+        const message =
+          error instanceof Error ? error.message : "Something went wrong";
+        setSession((current) => ({
+          ...current,
+          conversation: appendMessage(
+            current.conversation,
+            makeMessage(
+              "orchestrator",
+              `⚠️ Couldn't synthesize a plan: ${message}`,
+            ),
+          ),
+        }));
+      })
+      .finally(() => setPlanPending(false));
+  }, []);
 
   const sendToOrchestrator = useCallback(
     (text: string) => {
@@ -357,9 +391,12 @@ export function SessionProvider({
             ...current,
             conversation: appendMessage(
               current.conversation,
-              makeMessage("orchestrator", reply),
+              makeMessage("orchestrator", reply.text),
             ),
           }));
+          // The orchestrator decides when scoping is done; when it says so, the
+          // plan synthesizes off the artifacts on hand.
+          if (reply.readyForPlan) synthesizePlanFromArtifacts();
         })
         .catch((error: unknown) => {
           const message =
@@ -374,7 +411,12 @@ export function SessionProvider({
         })
         .finally(() => setOrchestratorPending(false));
     },
-    [setArtifactPending, addActivity, patchActivity],
+    [
+      setArtifactPending,
+      addActivity,
+      patchActivity,
+      synthesizePlanFromArtifacts,
+    ],
   );
 
   // A snapshot of one artifact in the shape the orchestrator's review reasons
@@ -659,6 +701,7 @@ export function SessionProvider({
       researchPending,
       architecturePending,
       orchestratorReviewing: reviewPending,
+      planPending,
       sendToOrchestrator,
       sendToArtifactAgent,
       artifactPending,
@@ -671,6 +714,7 @@ export function SessionProvider({
       researchPending,
       architecturePending,
       reviewPending,
+      planPending,
       sendToOrchestrator,
       sendToArtifactAgent,
       artifactPending,

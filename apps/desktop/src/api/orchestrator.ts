@@ -4,30 +4,43 @@ import type {
   GraphBody,
   GraphEdge,
   GraphNode,
+  Plan,
 } from "@inference-hackathon/core";
 import { API_BASE, toTurns } from "./planner";
 
+/** The orchestrator's reply: its prose plus whether the developer is done. */
+export interface OrchestratorReply {
+  text: string;
+  /** True once the developer has signaled to proceed; cues plan synthesis. */
+  readyForPlan: boolean;
+}
+
 /**
  * Ask the orchestrator agent for its next reply. Posts the conversation so far
- * to the planner server and returns the reply text. Throws with the server's
- * message when generation fails — usually a missing or rejected API key.
+ * to the planner server and returns its prose plus whether the developer has
+ * signaled the scoping is done — the cue to synthesize the plan. Throws with the
+ * server's message when generation fails — usually a missing or rejected key.
  */
 export async function askOrchestrator(
   conversation: ChatMessage[],
-): Promise<string> {
+): Promise<OrchestratorReply> {
   const response = await fetch(`${API_BASE}/api/orchestrator/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ messages: toTurns(conversation) }),
   });
 
-  const data = (await response.json()) as { text?: string; error?: string };
+  const data = (await response.json()) as {
+    text?: string;
+    readyForPlan?: boolean;
+    error?: string;
+  };
   if (!response.ok) {
     throw new Error(
       data.error ?? `Orchestrator request failed (${response.status})`,
     );
   }
-  return data.text ?? "";
+  return { text: data.text ?? "", readyForPlan: data.readyForPlan ?? false };
 }
 
 /** The title the namer returns, before it lands as the session goal. */
@@ -155,6 +168,37 @@ export async function fetchArtifacts(): Promise<Artifact[]> {
     );
   }
   return data.artifacts ?? [];
+}
+
+/**
+ * Ask the synthesizer to fold the finished artifacts into one implementation
+ * plan. Posts the goal and each artifact's diff body to the planner server and
+ * returns the overview and ordered steps. Throws with the server's message on
+ * failure — usually a missing or rejected API key.
+ */
+export async function synthesizePlan(
+  goal: string,
+  artifacts: Artifact[],
+): Promise<Plan> {
+  const response = await fetch(`${API_BASE}/api/plan`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      goal,
+      artifacts: artifacts.map((artifact) => ({
+        kind: artifact.kind,
+        title: artifact.title,
+        summary: artifact.summary,
+        body: artifact.body,
+      })),
+    }),
+  });
+
+  const data = (await response.json()) as Plan & { error?: string };
+  if (!response.ok) {
+    throw new Error(data.error ?? `Plan request failed (${response.status})`);
+  }
+  return { overview: data.overview, steps: data.steps };
 }
 
 /** The graph the architecture modeler returns, before it is dressed as an artifact. */

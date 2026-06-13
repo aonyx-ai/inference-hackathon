@@ -534,6 +534,70 @@ button.activity-event:hover {
   color: var(--text-dim);
 }
 
+/* ---- Plan: the synthesized read-out below the deck ----------------------- */
+
+.plan-view {
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--accent);
+  background: var(--bg-raised);
+  padding: 18px 20px;
+}
+
+.plan-view__overview {
+  margin: 0 0 18px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.plan-view__steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.plan-step {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.plan-step__index {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent-ink);
+  border: 1px solid var(--accent-edge);
+  background: var(--accent-soft);
+}
+
+.plan-step__body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.plan-step__title {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.plan-step__detail {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
 /* ---- Status pill --------------------------------------------------------- */
 
 .status-pill {

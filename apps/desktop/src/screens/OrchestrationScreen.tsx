@@ -4,13 +4,15 @@ import { Composer } from "../components/Composer";
 import { Message } from "../components/Message";
 import { ActivityItem } from "../components/ActivityItem";
 import { ArtifactCard } from "../components/ArtifactCard";
+import { PlanView } from "../components/PlanView";
 import { useSession } from "../state/SessionContext";
 
 /**
  * Home base, top to bottom: the task, the chat and activity history with the
  * orchestrator (where agents' background work and questions surface as feed
  * entries), and the artifacts the orchestrator produced. Clicking a question or
- * an artifact opens that artifact's screen.
+ * an artifact opens that artifact's screen. When the orchestrator reads that
+ * scoping is done, the synthesized plan lands at the bottom.
  */
 export function OrchestrationScreen() {
   const {
@@ -19,6 +21,7 @@ export function OrchestrationScreen() {
     researchPending,
     architecturePending,
     orchestratorReviewing,
+    planPending,
     sendToOrchestrator,
   } = useSession();
   const navigate = useNavigate();
@@ -119,6 +122,18 @@ export function OrchestrationScreen() {
                 </div>
               )}
             </div>
+          </section>
+        )}
+
+        {(planPending || session.plan) && (
+          <section className="plan">
+            <h2 className="artifacts__title">Plan</h2>
+            {planPending && (
+              <p className="activity__pending">
+                Drawing your artifacts together into a plan…
+              </p>
+            )}
+            {session.plan && <PlanView plan={session.plan} />}
           </section>
         )}
       </div>
