@@ -71,6 +71,10 @@ lint-ts:
 lint-yaml:
     yamllint .
 
+# Regenerate the domain model diagram in docs/domain-model.md
+render-domain:
+    cd packages/domain && bun run render
+
 # Run tests with bun
 test-ts:
     bun test

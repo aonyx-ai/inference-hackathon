@@ -34,6 +34,10 @@
       "name": "@inference-hackathon/core",
       "version": "0.0.0",
     },
+    "packages/domain": {
+      "name": "@inference-hackathon/domain",
+      "version": "0.0.0",
+    },
   },
   "packages": {
     "@emnapi/core": ["@emnapi/core@1.10.0", "", { "dependencies": { "@emnapi/wasi-threads": "1.2.1", "tslib": "^2.4.0" } }, "sha512-yq6OkJ4p82CAfPl0u9mQebQHKPJkY7WrIuk205cTYnYe+k2Z8YBh11FrbRG/H6ihirqcacOgl2BIO8oyMQLeXw=="],
@@ -45,6 +49,8 @@
     "@inference-hackathon/core": ["@inference-hackathon/core@workspace:packages/core"],
 
     "@inference-hackathon/desktop": ["@inference-hackathon/desktop@workspace:apps/desktop"],
+
+    "@inference-hackathon/domain": ["@inference-hackathon/domain@workspace:packages/domain"],
 
     "@napi-rs/wasm-runtime": ["@napi-rs/wasm-runtime@1.1.5", "", { "dependencies": { "@tybys/wasm-util": "^0.10.2" }, "peerDependencies": { "@emnapi/core": "^1.7.1", "@emnapi/runtime": "^1.7.1" } }, "sha512-AWPoBRJ9tsnVhor4sjO7rkni+7p+2IAEFj6cx06UgP10jkQHqay/36uRV/bFkgrh18D9vb4cr8Q0Pthskgzy+Q=="],
 
