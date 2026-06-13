@@ -7,6 +7,10 @@ import { domainEditSchema } from "./domain-agent.ts";
 import { withGraphContext } from "./graph-context.ts";
 import { mastra } from "./mastra.ts";
 import { parseMermaidClassDiagram } from "./mermaid-graph.ts";
+import {
+  reviewArtifactChange,
+  type ReviewInput,
+} from "./orchestrator-review.ts";
 import { researchRepo } from "./research.ts";
 import { generateTaskTitle } from "./title.ts";
 
@@ -144,6 +148,21 @@ function isDomainChatRequest(value: unknown): value is DomainChatRequest {
     (graph as { type?: unknown }).type === "graph" &&
     Array.isArray((graph as { nodes?: unknown }).nodes) &&
     Array.isArray((graph as { edges?: unknown }).edges)
+  );
+}
+
+function isReviewRequest(value: unknown): value is ReviewInput {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as {
+    goal?: unknown;
+    changed?: unknown;
+    others?: unknown;
+  };
+  return (
+    typeof candidate.goal === "string" &&
+    typeof candidate.changed === "object" &&
+    candidate.changed !== null &&
+    Array.isArray(candidate.others)
   );
 }
 
@@ -322,6 +341,7 @@ const server = Bun.serve({
         return json({
           text: edit.reply,
           body: { type: "graph", nodes: edit.nodes, edges: edit.edges },
+          raise: edit.raise,
         });
       } catch (error) {
         const message =
@@ -361,11 +381,44 @@ const server = Bun.serve({
         return json({
           text: edit.reply,
           body: { type: "graph", nodes: edit.nodes, edges: edit.edges },
+          raise: edit.raise,
         });
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Unknown error";
         console.error("Architecture agent generation failed:", message);
+        return json({ error: message }, 502);
+      }
+    }
+
+    // The orchestrator's reactive review: after an artifact agent changes its
+    // surface, the webview posts the change and the other artifacts here, and the
+    // orchestrator decides what the change forces elsewhere — a note for the
+    // developer and directives the webview fans back out to the other agents.
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/orchestrator/review"
+    ) {
+      let body: unknown;
+      try {
+        body = await request.json();
+      } catch {
+        return json({ error: "Invalid JSON body" }, 400);
+      }
+      if (!isReviewRequest(body)) {
+        return json(
+          { error: "Expected { goal, changed, others } for a review" },
+          400,
+        );
+      }
+
+      try {
+        const review = await reviewArtifactChange(body);
+        return json(review);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Unknown error";
+        console.error("Orchestrator review failed:", message);
         return json({ error: message }, 502);
       }
     }

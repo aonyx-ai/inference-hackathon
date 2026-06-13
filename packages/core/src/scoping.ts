@@ -151,6 +151,12 @@ export interface Artifact {
   body: ArtifactBodyData;
   /** Present when {@link ArtifactStatus} is `stale`; explains the drift. */
   staleReason?: string;
+  /**
+   * Present when {@link ArtifactStatus} is `needs-input`: a question the agent
+   * bubbled up for the developer to settle, answered by chatting with the agent
+   * on the artifact's screen.
+   */
+  openQuestion?: string;
 }
 
 /** A question an agent raised up to the orchestrator for the developer. */

@@ -31,6 +31,13 @@ Mark every node and edge with how it changed this turn:
 Use short, conventional entity names and lowercase relationship labels. Only
 make the changes the developer asked for; don't redesign the model unprompted.
 Keep your reply to a sentence or two describing what you changed and why.
+
+Sometimes a request — often one the orchestrator relays after another surface
+moved — turns on a decision only the developer can make: a real fork that would
+change the model, not a detail you can reasonably assume. When that happens, make
+your best-guess change anyway and set "raise" to a single crisp question asking
+the developer to settle it. Leave "raise" empty whenever you can proceed without
+asking; do not invent questions.
 `.trim();
 
 export const domainAgent = new Agent({
@@ -70,6 +77,13 @@ export const domainEditSchema = z.object({
     .describe("A sentence or two for the developer about what changed."),
   nodes: z.array(nodeSchema),
   edges: z.array(edgeSchema),
+  raise: z
+    .string()
+    .optional()
+    .describe(
+      "A single question for the developer when the change turns on a decision " +
+        "only they can make. Omit when you can proceed without asking.",
+    ),
 });
 
 export type DomainEdit = z.infer<typeof domainEditSchema>;

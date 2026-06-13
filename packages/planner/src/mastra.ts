@@ -6,6 +6,7 @@ import { architectureModeler } from "./architecture.ts";
 import { domainAgent } from "./domain-agent.ts";
 import { intakeWorkflow } from "./intake.ts";
 import { orchestrator } from "./orchestrator.ts";
+import { orchestratorReviewer } from "./orchestrator-review.ts";
 import { taskNamer } from "./title.ts";
 
 /**
@@ -17,6 +18,7 @@ export const mastra = new Mastra({
   workflows: { intake: intakeWorkflow },
   agents: {
     orchestrator,
+    orchestratorReviewer,
     domain: domainAgent,
     taskNamer,
     architectureModeler,
