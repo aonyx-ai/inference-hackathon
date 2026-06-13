@@ -18,14 +18,10 @@ export {
 export {
   domainAgent,
   domainEditSchema,
-  withGraphContext,
+  withModelContext,
   type DomainEdit,
 } from "./domain-agent.ts";
-export {
-  parseMermaidGraph,
-  parseMermaidClassDiagram,
-  parseMermaidFlowchart,
-} from "./mermaid-graph.ts";
+export { parseMermaidFlowchart } from "./mermaid-graph.ts";
 export {
   architectureAgent,
   architectureEditSchema,

@@ -75,9 +75,10 @@ render-domain:
 render-domain-diff:
     cd packages/domain && bun run render-diff
 
-# Regenerate the domain model artifact the planner reads in docs/domain.mmd
+# Regenerate the domain model artifact the planner reads in docs/domain.json
 render-domain-artifact:
     cd packages/domain && bun run render-artifact
+    prettier --write docs/domain.json
 
 # Check the workspace dependency graph against the architecture rules
 check-arch:

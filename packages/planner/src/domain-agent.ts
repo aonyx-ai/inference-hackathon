@@ -3,34 +3,40 @@ import { z } from "zod";
 
 import { artifactAgentModel } from "./models.ts";
 
-export { withGraphContext } from "./graph-context.ts";
+export { withModelContext } from "./graph-context.ts";
 
 /**
  * The domain-model artifact agent. Where the orchestrator reasons across all
- * three surfaces, this agent owns a single artifact: the domain model, drawn as
- * a diffable graph of entities (nodes) and relationships (edges). The developer
- * chats with it on the artifact screen and it edits the graph in place, marking
- * what it added, removed, or modified so the differ can color the change.
+ * three surfaces, this agent owns a single artifact: the domain model, a graph
+ * of entities grouped into bounded contexts, where the fields are the source of
+ * truth and the relationships are projected from them. The developer chats with
+ * it on the artifact screen and it edits the model in place; the deck overlays
+ * the result on the codebase baseline, so the change colors itself.
  */
 const INSTRUCTIONS = `
-You are the domain-model agent. You own one artifact: a domain model drawn as a
-graph, where nodes are entities (e.g. User, Order, ExportJob) and edges are the
-relationships between them (e.g. "owns", "contains").
+You are the domain-model agent. You own one artifact: a domain model expressed in
+a small meta-model. A model is a set of bounded contexts and the entities within
+them. Each entity has a DDD kind, a list of fields, and optional invariants. A
+field's type is the source of truth for the graph's edges:
+  - A Scalar type (a primitive or named enum, e.g. "string", "Timestamp",
+    "SessionStatus") stays inside the entity.
+  - A Contains type points at another entity the entity owns by value.
+  - A Reference type points at another entity by id, across an aggregate
+    boundary.
 
 The developer chats with you to evolve this model. On each turn you receive the
 current model as JSON and a request. Return the complete updated model — every
-node and edge, not just the delta — together with a short reply.
+context, entity, and field, not just the delta — together with a short reply.
 
-Mark every node and edge with how it changed this turn:
-  - "added" for entities or relationships you are introducing now.
-  - "removed" for ones you are dropping. Keep them in the list, marked removed,
-    so the developer can see what left.
-  - "modified" for ones whose label or meaning you changed.
-  - "unchanged" for everything you carried over untouched.
+Reuse the stable ids from the model you were given for everything you carry over,
+and keep them stable across turns. That is how a rename surfaces as a single
+modify rather than a delete plus an add, and how the deck colors the diff. Mint a
+new id only for something genuinely new; an entity id is a short slug (e.g.
+"comment"), a field id is "<entityId>.<fieldName>" (e.g. "task.comments").
 
-Use short, conventional entity names and lowercase relationship labels. Only
-make the changes the developer asked for; don't redesign the model unprompted.
-Keep your reply to a sentence or two describing what you changed and why.
+Mark one field per entity with the "Identity" role to denote its key. Only make
+the changes the developer asked for; don't redesign the model unprompted. Keep
+your reply to a sentence or two describing what you changed and why.
 
 Sometimes a request — often one the orchestrator relays after another surface
 moved — turns on a decision only the developer can make: a real fork that would
@@ -47,36 +53,86 @@ export const domainAgent = new Agent({
   model: artifactAgentModel(),
 });
 
-const change = z.enum(["added", "removed", "modified", "unchanged"]);
+const typeRefSchema = z
+  .discriminatedUnion("kind", [
+    z.object({
+      kind: z.literal("Scalar"),
+      name: z
+        .string()
+        .describe("A primitive or named enum, e.g. string or SessionStatus."),
+    }),
+    z.object({
+      kind: z.literal("Contains"),
+      target: z.string().describe("id of the entity owned by value."),
+    }),
+    z.object({
+      kind: z.literal("Reference"),
+      target: z.string().describe("id of the entity referenced by id."),
+    }),
+  ])
+  .describe("A field's type; Contains and Reference project to edges.");
 
-const nodeSchema = z.object({
-  id: z.string().describe("Stable identifier, reused across turns."),
-  label: z.string().describe("The entity name shown in the graph."),
-  group: z
+const fieldSchema = z.object({
+  id: z
     .string()
+    .describe('Stable id, "<entityId>.<fieldName>", reused across turns.'),
+  name: z.string().describe("The field name shown on the entity."),
+  type: typeRefSchema,
+  collection: z
+    .boolean()
     .optional()
-    .describe("Optional bounded context the entity belongs to."),
-  change,
+    .describe("True for a collection, e.g. T[]."),
+  optional: z
+    .boolean()
+    .optional()
+    .describe("True when the field may be absent."),
+  role: z
+    .enum(["Identity", "Normal"])
+    .optional()
+    .describe(
+      "The Identity role marks the entity key; everything else is Normal.",
+    ),
 });
 
-const edgeSchema = z.object({
-  from: z.string().describe("id of the source node."),
-  to: z.string().describe("id of the target node."),
-  label: z.string().optional().describe('The relationship, e.g. "owns".'),
-  change,
+const entitySchema = z.object({
+  id: z
+    .string()
+    .describe("Stable identifier, a short slug, reused across turns."),
+  name: z.string().describe("The entity name shown in the graph."),
+  kind: z
+    .enum(["AggregateRoot", "Entity", "ValueObject", "DomainEvent"])
+    .describe("The DDD building block the entity represents."),
+  context: z
+    .string()
+    .describe("id of the bounded context the entity belongs to."),
+  extends: z
+    .string()
+    .optional()
+    .describe("id of the entity this one specializes, drawn as inheritance."),
+  fields: z.array(fieldSchema),
+  invariants: z
+    .array(z.string())
+    .optional()
+    .describe("Business rules that must always hold, surfaced as notes."),
+});
+
+const modelSchema = z.object({
+  contexts: z
+    .array(z.object({ id: z.string(), name: z.string() }))
+    .describe("The bounded contexts that scope the ubiquitous language."),
+  entities: z.array(entitySchema),
 });
 
 /**
- * What the agent returns each turn: a chat reply plus the full updated graph.
- * The server hands the nodes and edges straight back to the frontend as the
- * artifact's new body, so the differ re-renders with the changes colored.
+ * What the agent returns each turn: a chat reply plus the full updated model.
+ * The server validates the model and hands it back to the frontend as the
+ * artifact's new model, which the deck overlays on the codebase baseline.
  */
 export const domainEditSchema = z.object({
   reply: z
     .string()
     .describe("A sentence or two for the developer about what changed."),
-  nodes: z.array(nodeSchema),
-  edges: z.array(edgeSchema),
+  model: modelSchema,
   raise: z
     .string()
     .optional()

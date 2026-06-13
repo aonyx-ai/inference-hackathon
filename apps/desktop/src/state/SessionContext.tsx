@@ -14,7 +14,6 @@ import type {
   Author,
   ChatMessage,
   Decision,
-  GraphBody,
   Session,
 } from "@inference-hackathon/core";
 import { findArtifact } from "@inference-hackathon/core";
@@ -24,6 +23,7 @@ import {
   fetchArtifacts,
   formatSurfaceContext,
   graphDigest,
+  modelDigest,
   research,
   reviewArtifactChange,
   synthesizePlan,
@@ -41,18 +41,18 @@ import { designDemoArtifact } from "../data/designDemo";
  */
 const MAX_CASCADE_DEPTH = 2;
 
-/** Asks a graph artifact agent to edit its graph; domain and architecture share this shape. */
-type AskArtifactAgent = typeof askDomainAgent;
-
 /**
- * The editing agent for an artifact kind, or undefined for kinds without one
- * (the wireframe and design surfaces). Resolved lazily by kind so a test that
- * mocks only one agent never trips over the other's binding at module load.
+ * Whether an artifact has an editing agent. The domain model (a structured
+ * model) and the architecture map (a node/edge graph) each do; the wireframe and
+ * design surfaces don't yet. The two diff differently — the domain model overlays
+ * on its baseline, the architecture graph carries its own change markers — so
+ * each surface is dispatched by its body type rather than a shared agent.
  */
-function agentFor(kind: string): AskArtifactAgent | undefined {
-  if (kind === "domain") return askDomainAgent;
-  if (kind === "architecture") return askArchitectureAgent;
-  return undefined;
+function isEditable(artifact: Artifact): boolean {
+  return (
+    artifact.body.type === "domain" ||
+    (artifact.body.type === "graph" && artifact.kind === "architecture")
+  );
 }
 
 /** A fresh session with nothing in it; the orchestrator fills it as you talk. */
@@ -238,7 +238,7 @@ export function SessionProvider({
     (task: string) => {
       const domainArtifact = sessionRef.current.artifacts.find(
         (artifact) =>
-          artifact.kind === "domain" && artifact.body.type === "graph",
+          artifact.kind === "domain" && artifact.body.type === "domain",
       );
       const architectureArtifact = sessionRef.current.artifacts.find(
         (artifact) =>
@@ -273,9 +273,10 @@ export function SessionProvider({
         .finally(() => setResearchPending(false));
 
       // Domain: the model loaded from disk, so the task grounds and edits the
-      // graph already in the deck rather than drafting a new one.
-      if (domainArtifact && domainArtifact.body.type === "graph") {
-        const graph = domainArtifact.body;
+      // model already in the deck rather than drafting a new one. The codebase
+      // baseline stays fixed so the edit colors against it.
+      if (domainArtifact && domainArtifact.body.type === "domain") {
+        const { baseline, model } = domainArtifact.body;
         const artifactId = domainArtifact.id;
         const draftEvent = makeActivity(
           "draft",
@@ -292,7 +293,7 @@ export function SessionProvider({
             const request =
               (domainContext ? `${domainContext}\n\n` : "") +
               `The developer's task: ${task}\n\nUpdate the domain model to reflect this task.`;
-            return askDomainAgent(graph, [makeMessage("user", request)]);
+            return askDomainAgent(model, [makeMessage("user", request)]);
           })
           .then((result) => {
             setSession((current) => ({
@@ -302,7 +303,11 @@ export function SessionProvider({
                   item.id === artifactId
                     ? {
                         ...item,
-                        body: result.body,
+                        body: {
+                          type: "domain",
+                          baseline,
+                          model: result.model,
+                        },
                         status: "ready",
                         conversation: appendMessage(
                           item.conversation,
@@ -457,39 +462,44 @@ export function SessionProvider({
   );
 
   // A snapshot of one artifact in the shape the orchestrator's review reasons
-  // over: identity, intent, and a compact digest of its current graph.
+  // over: identity, intent, and a compact digest of its current surface — the
+  // domain model from its entities, the architecture map from its graph.
   const reviewInputFor = useCallback(
-    (artifact: Artifact): ReviewArtifactInput | null =>
-      artifact.body.type === "graph" && agentFor(artifact.kind)
-        ? {
-            id: artifact.id,
-            kind: artifact.kind,
-            title: artifact.title,
-            summary: artifact.summary,
-            digest: graphDigest(artifact.body),
-          }
-        : null,
+    (artifact: Artifact): ReviewArtifactInput | null => {
+      const digest =
+        artifact.body.type === "domain"
+          ? modelDigest(artifact.body.model)
+          : artifact.body.type === "graph" && artifact.kind === "architecture"
+            ? graphDigest(artifact.body)
+            : null;
+      if (digest === null) return null;
+      return {
+        id: artifact.id,
+        kind: artifact.kind,
+        title: artifact.title,
+        summary: artifact.summary,
+        digest,
+      };
+    },
     [],
   );
 
-  // Run one agent turn against a graph artifact: show the prompt in its thread,
-  // ask the agent, then fold its reply, its edited graph, and any question it
-  // raised back into state. A developer prompt answers any open question; an
-  // orchestrator directive leaves the artifact marked stale while it reworks.
-  // Returns the new graph and the reply, or null when there's no agent or it
-  // errored.
+  // Run one agent turn against an editable artifact: show the prompt in its
+  // thread, ask its agent, then fold the reply, the edited surface, and any
+  // question it raised back into state. The domain model overlays its edit on
+  // the baseline; the architecture graph carries its own change markers. A
+  // developer prompt answers any open question; an orchestrator directive leaves
+  // the artifact marked stale while it reworks. Returns a compact digest of the
+  // new surface and the reply, or null when there's no agent or it errored.
   const runAgentTurn = useCallback(
     async (
       artifactId: string,
       prompt: ChatMessage,
       staleReason?: string,
-    ): Promise<{ body: GraphBody; reply: string } | null> => {
+    ): Promise<{ digest: string; reply: string } | null> => {
       const artifact = findArtifact(sessionRef.current, artifactId);
-      if (!artifact || artifact.body.type !== "graph") return null;
-      const askAgent = agentFor(artifact.kind);
-      if (!askAgent) return null;
+      if (!artifact || !isEditable(artifact)) return null;
 
-      const graph = artifact.body;
       const kind = artifact.kind;
       // The model always sees the prompt as the actionable user request, even
       // when the orchestrator authored it in the thread, so the agent acts on it.
@@ -515,9 +525,12 @@ export function SessionProvider({
         ),
       }));
 
-      setArtifactPending(artifactId, true);
-      try {
-        const result = await askAgent(graph, modelConversation);
+      // Fold the agent's reply and edited body back into the artifact.
+      const applyResult = (
+        body: Artifact["body"],
+        reply: string,
+        raise?: string,
+      ) =>
         setSession((current) => ({
           ...current,
           artifacts: current.artifacts.map(
@@ -527,17 +540,41 @@ export function SessionProvider({
                     ...item,
                     conversation: appendMessage(
                       item.conversation,
-                      makeMessage(kind, result.text),
+                      makeMessage(kind, reply),
                     ),
-                    body: result.body,
-                    status: result.raise ? "needs-input" : "ready",
+                    body,
+                    status: raise ? "needs-input" : "ready",
                     staleReason: undefined,
-                    openQuestion: result.raise,
+                    openQuestion: raise,
                   }
                 : item,
           ),
         }));
-        return { body: result.body, reply: result.text };
+
+      setArtifactPending(artifactId, true);
+      try {
+        if (artifact.body.type === "domain") {
+          const { baseline } = artifact.body;
+          const result = await askDomainAgent(
+            artifact.body.model,
+            modelConversation,
+          );
+          applyResult(
+            { type: "domain", baseline, model: result.model },
+            result.text,
+            result.raise,
+          );
+          return { digest: modelDigest(result.model), reply: result.text };
+        }
+        if (artifact.body.type === "graph") {
+          const result = await askArchitectureAgent(
+            artifact.body,
+            modelConversation,
+          );
+          applyResult(result.body, result.text, result.raise);
+          return { digest: graphDigest(result.body), reply: result.text };
+        }
+        return null;
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Something went wrong";
@@ -628,7 +665,7 @@ export function SessionProvider({
               kind: target.kind,
               title: target.title,
               summary: target.summary,
-              digest: graphDigest(result.body),
+              digest: result.digest,
               changeSummary: result.reply,
             },
             visited,
@@ -647,7 +684,7 @@ export function SessionProvider({
 
       // Surfaces without an editing agent (the wireframe and design) just record
       // the turn.
-      if (artifact.body.type !== "graph" || !agentFor(artifact.kind)) {
+      if (!isEditable(artifact)) {
         setSession((current) => ({
           ...current,
           artifacts: current.artifacts.map((item) =>
@@ -679,7 +716,7 @@ export function SessionProvider({
           return propagateChange(
             {
               ...meta,
-              digest: graphDigest(result.body),
+              digest: result.digest,
               changeSummary: result.reply,
             },
             new Set([artifactId]),

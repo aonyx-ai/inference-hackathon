@@ -1,4 +1,9 @@
 import { Agent } from "@mastra/core/agent";
+import {
+  diff,
+  type DomainModel,
+  formatChangeset,
+} from "@inference-hackathon/domain";
 import { z } from "zod";
 
 import { orchestratorModel } from "./models.ts";
@@ -47,7 +52,13 @@ interface WireframeBodyInput {
   nodes: WireframeNodeInput[];
 }
 
-type ArtifactBodyInput = GraphBodyInput | WireframeBodyInput;
+interface DomainBodyInput {
+  type: "domain";
+  baseline: DomainModel;
+  model: DomainModel;
+}
+
+type ArtifactBodyInput = GraphBodyInput | DomainBodyInput | WireframeBodyInput;
 
 /** One artifact as the synthesizer reads it — trimmed to what the plan needs. */
 export interface PlanArtifactInput {
@@ -127,13 +138,20 @@ function describeWireframe(body: WireframeBodyInput): string {
   return sections.join("\n");
 }
 
+/** Render a domain artifact's diff as a changeset, baseline to current model. */
+function describeDomain(body: DomainBodyInput): string {
+  return formatChangeset(diff(body.baseline, body.model));
+}
+
 /** Turn one artifact into a labeled diff block for the synthesizer's prompt. */
 function describeArtifact(artifact: PlanArtifactInput): string {
   const header = `## ${KIND_LABELS[artifact.kind]}: ${artifact.title}\n${artifact.summary}`;
   const body =
     artifact.body.type === "graph"
       ? describeGraph(artifact.body)
-      : describeWireframe(artifact.body);
+      : artifact.body.type === "domain"
+        ? describeDomain(artifact.body)
+        : describeWireframe(artifact.body);
   return `${header}\n${body}`;
 }
 
