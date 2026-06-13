@@ -35,6 +35,13 @@ The findings are presented as easy-to-parse artifacts that match the surface
 area. Changes to the UI are surfaced as wireframes or high-fidelity mocks,
 changes to the architecture and domain model as diffable graphs.
 
+Before any artifact is drafted, a group of Nemotron-powered research agents — one
+per surface — reads the actual working directory to learn how the repository
+works today. Each one maps the project, searches for the concepts the change
+touches, and reads the files that matter, then hands the artifact agents grounded
+context — relevant paths, likely touchpoints, and the conventions to honor — so
+the proposed changes fit the real code rather than the prompt alone.
+
 ## Planning Process
 
 ```mermaid
@@ -45,6 +52,13 @@ sequenceDiagram
     loop Until the goal is clear
         Orchestrator->>User: Ask clarifying questions
         User->>Orchestrator: Answer
+    end
+    par Architecture research
+        Orchestrator->>+Research Agents: Explore repo (Nemotron)
+    and Domain research
+        Note over Research Agents: Read the workdir per surface
+    and UX research
+        Research Agents-->>-Orchestrator: Repository context
     end
     par Architecture
         Orchestrator->>+Architecture Agent: Plan
@@ -79,6 +93,7 @@ domain model speak one language.
 | Mastra agent runtime      | Typed tools, workflows, and memory            |
 | Event-driven planning     | Stream questions and artifact diffs to the UI |
 | Structured artifacts      | Diffable graphs with stable IDs, not prose    |
+| Nemotron repo research    | Ground artifacts in the real code, cheaply    |
 | oxc + tsgo + Flox         | Fast, reproducible lint, format, and builds   |
 
 ### Workflow Model

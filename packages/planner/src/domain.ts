@@ -60,13 +60,21 @@ export const domainModeler = new Agent({
   model: orchestratorModel(),
 });
 
-/** Model the domain a task touches and return the graph as structured data. */
+/**
+ * Model the domain a task touches and return the graph as structured data. When
+ * the repo-research stage has run, its domain findings are passed as `context`
+ * so the graph is grounded in the entities already in the codebase rather than
+ * invented from the prompt alone.
+ */
 export async function generateDomainArtifact(
   goal: string,
+  context?: string,
 ): Promise<DomainArtifactOutput> {
-  const result = await domainModeler.generate(
-    [{ role: "user", content: goal }],
-    { structuredOutput: { schema: DomainArtifactSchema } },
-  );
+  const content = context
+    ? `${context}\n\nThe requested change:\n${goal}`
+    : goal;
+  const result = await domainModeler.generate([{ role: "user", content }], {
+    structuredOutput: { schema: DomainArtifactSchema },
+  });
   return result.object;
 }

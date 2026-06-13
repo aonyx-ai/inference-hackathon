@@ -12,8 +12,13 @@ import { useSession } from "../state/SessionContext";
  * opens that artifact's screen.
  */
 export function OrchestrationScreen() {
-  const { session, orchestratorPending, domainPending, sendToOrchestrator } =
-    useSession();
+  const {
+    session,
+    orchestratorPending,
+    researchPending,
+    domainPending,
+    sendToOrchestrator,
+  } = useSession();
   const navigate = useNavigate();
   const open = openDecisions(session);
   const started = session.conversation.length > 0;
@@ -53,6 +58,11 @@ export function OrchestrationScreen() {
               </li>
             ))}
           </ol>
+          {researchPending && (
+            <p className="activity__pending">
+              Researching the repository with Nemotron…
+            </p>
+          )}
           {orchestratorPending && (
             <p className="activity__pending">Orchestrator is thinking…</p>
           )}
@@ -77,7 +87,11 @@ export function OrchestrationScreen() {
               {domainPending && (
                 <div className="card card--pending">
                   <span className="card__kind">Domain Model</span>
-                  <p className="card__summary">Modeling the domain…</p>
+                  <p className="card__summary">
+                    {researchPending
+                      ? "Reading the repository…"
+                      : "Modeling the domain…"}
+                  </p>
                 </div>
               )}
             </div>

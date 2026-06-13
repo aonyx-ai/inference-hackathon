@@ -1,6 +1,7 @@
 import { domainEditSchema, withGraphContext } from "./domain-agent.ts";
 import { mastra } from "./mastra.ts";
 import { generateDomainArtifact } from "./domain.ts";
+import { researchRepo } from "./research.ts";
 
 /**
  * A single turn in the chat, in the provider-agnostic shape the frontend sends.
@@ -19,6 +20,8 @@ export interface OrchestratorChatRequest {
 /** The goal the domain modeler scopes into the first domain artifact. */
 export interface DomainArtifactRequest {
   goal: string;
+  /** Optional grounding from the repo-research stage, folded into the prompt. */
+  context?: string;
 }
 
 /** The current domain-model graph the agent edits, sent alongside the chat. */
@@ -26,6 +29,21 @@ export interface DomainChatRequest {
   messages: ChatTurn[];
   body: { type: "graph"; nodes: unknown[]; edges: unknown[] };
 }
+
+/** Kick off the repo-research fan-out over a checkout on the local machine. */
+export interface RepoResearchRequest {
+  goal: string;
+  /**
+   * Absolute path to the repository the agents should explore. Optional: when
+   * omitted the server falls back to `RESEARCH_REPO_ROOT` and finally its own
+   * working directory, so the demo can dogfood on the repo the sidecar runs in
+   * without the webview having to know a path.
+   */
+  root?: string;
+}
+
+/** Where to research when the request does not name a root. */
+const DEFAULT_RESEARCH_ROOT = process.env.RESEARCH_REPO_ROOT ?? process.cwd();
 
 const PORT = Number(process.env.PLANNER_PORT ?? 8787);
 
@@ -57,6 +75,15 @@ function isDomainChatRequest(value: unknown): value is DomainChatRequest {
     (graph as { type?: unknown }).type === "graph" &&
     Array.isArray((graph as { nodes?: unknown }).nodes) &&
     Array.isArray((graph as { edges?: unknown }).edges)
+  );
+}
+
+function isResearchRequest(value: unknown): value is RepoResearchRequest {
+  if (typeof value !== "object" || value === null) return false;
+  const root = (value as { root?: unknown }).root;
+  return (
+    typeof (value as { goal?: unknown }).goal === "string" &&
+    (root === undefined || typeof root === "string")
   );
 }
 
@@ -149,7 +176,7 @@ const server = Bun.serve({
       }
 
       try {
-        const artifact = await generateDomainArtifact(body.goal);
+        const artifact = await generateDomainArtifact(body.goal, body.context);
         return json(artifact);
       } catch (error) {
         const message =
@@ -190,6 +217,35 @@ const server = Bun.serve({
         const message =
           error instanceof Error ? error.message : "Unknown error";
         console.error("Domain agent generation failed:", message);
+        return json({ error: message }, 502);
+      }
+    }
+
+    // The repo-research stage: a group of Nemotron agents reads the checkout at
+    // `root` and returns the grounding the artifact agents fold into their
+    // prompts. It runs after the developer states the change and before the
+    // artifact agents propose it.
+    if (request.method === "POST" && url.pathname === "/api/research") {
+      let body: unknown;
+      try {
+        body = await request.json();
+      } catch {
+        return json({ error: "Invalid JSON body" }, 400);
+      }
+      if (!isResearchRequest(body)) {
+        return json({ error: "Expected { goal: string, root?: string }" }, 400);
+      }
+
+      try {
+        const context = await researchRepo(
+          body.goal,
+          body.root ?? DEFAULT_RESEARCH_ROOT,
+        );
+        return json(context);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Unknown error";
+        console.error("Repo research failed:", message);
         return json({ error: message }, 502);
       }
     }
