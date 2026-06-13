@@ -15,6 +15,17 @@ export {
 } from "./domain-agent.ts";
 export { parseMermaidClassDiagram } from "./mermaid-graph.ts";
 export {
+  architectureModeler,
+  generateArchitectureArtifact,
+  ArchitectureArtifactSchema,
+  type ArchitectureArtifactOutput,
+} from "./architecture.ts";
+export {
+  architectureAgent,
+  architectureEditSchema,
+  type ArchitectureEdit,
+} from "./architecture-agent.ts";
+export {
   researchRepo,
   formatSurfaceContext,
   SurfaceFindingsSchema,

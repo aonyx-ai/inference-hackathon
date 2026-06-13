@@ -1,7 +1,10 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
-import { domainEditSchema, withGraphContext } from "./domain-agent.ts";
+import { architectureEditSchema } from "./architecture-agent.ts";
+import { generateArchitectureArtifact } from "./architecture.ts";
+import { domainEditSchema } from "./domain-agent.ts";
+import { withGraphContext } from "./graph-context.ts";
 import { mastra } from "./mastra.ts";
 import { parseMermaidClassDiagram } from "./mermaid-graph.ts";
 import { researchRepo } from "./research.ts";
@@ -24,6 +27,13 @@ export interface OrchestratorChatRequest {
 /** The opening prompt the namer distills into a short task title. */
 export interface TaskTitleRequest {
   prompt: string;
+}
+
+/** The goal the architecture modeler maps into the architecture artifact. */
+export interface ArchitectureArtifactRequest {
+  goal: string;
+  /** Optional grounding from the repo-research stage, folded into the prompt. */
+  context?: string;
 }
 
 /** The current domain-model graph the agent edits, sent alongside the chat. */
@@ -64,6 +74,7 @@ const KIND_TITLES: Record<(typeof KINDS)[number], string> = {
 
 const orchestrator = mastra.getAgent("orchestrator");
 const domain = mastra.getAgent("domain");
+const architecture = mastra.getAgent("architecture");
 
 /**
  * Read every Mermaid artifact from the codebase's `docs` folder, parse each into
@@ -103,6 +114,16 @@ function hasMessages(value: unknown): value is { messages: ChatTurn[] } {
     typeof value === "object" &&
     value !== null &&
     Array.isArray((value as { messages?: unknown }).messages)
+  );
+}
+
+function isArchitectureRequest(
+  value: unknown,
+): value is ArchitectureArtifactRequest {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as { goal?: unknown }).goal === "string"
   );
 }
 
@@ -245,6 +266,36 @@ const server = Bun.serve({
       }
     }
 
+    // The orchestrator's first prompt also spins up an architecture artifact:
+    // the architecture modeler maps the goal onto the components it touches.
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/orchestrator/architecture"
+    ) {
+      let body: unknown;
+      try {
+        body = await request.json();
+      } catch {
+        return json({ error: "Invalid JSON body" }, 400);
+      }
+      if (!isArchitectureRequest(body)) {
+        return json({ error: "Expected { goal: string }" }, 400);
+      }
+
+      try {
+        const artifact = await generateArchitectureArtifact(
+          body.goal,
+          body.context,
+        );
+        return json(artifact);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Unknown error";
+        console.error("Architecture artifact generation failed:", message);
+        return json({ error: message }, 502);
+      }
+    }
+
     // The domain-model agent edits a graph in place: it gets the current graph
     // plus the chat and returns a reply and the complete updated graph, which
     // the webview drops straight back into the artifact's body.
@@ -276,6 +327,45 @@ const server = Bun.serve({
         const message =
           error instanceof Error ? error.message : "Unknown error";
         console.error("Domain agent generation failed:", message);
+        return json({ error: message }, 502);
+      }
+    }
+
+    // The architecture agent edits its map in place, mirroring the domain chat:
+    // current graph plus chat in, a reply and the complete updated graph out.
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/architecture/chat"
+    ) {
+      let body: unknown;
+      try {
+        body = await request.json();
+      } catch {
+        return json({ error: "Invalid JSON body" }, 400);
+      }
+      if (!isDomainChatRequest(body)) {
+        return json(
+          { error: "Expected { messages: ChatTurn[], body: GraphBody }" },
+          400,
+        );
+      }
+
+      try {
+        const result = await architecture.generate(
+          toModelMessages(
+            withGraphContext(body.body, body.messages, "architecture map"),
+          ),
+          { structuredOutput: { schema: architectureEditSchema } },
+        );
+        const edit = result.object;
+        return json({
+          text: edit.reply,
+          body: { type: "graph", nodes: edit.nodes, edges: edit.edges },
+        });
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Unknown error";
+        console.error("Architecture agent generation failed:", message);
         return json({ error: message }, 502);
       }
     }

@@ -17,12 +17,17 @@ import type {
 import { findArtifact } from "@inference-hackathon/core";
 import {
   askOrchestrator,
+  createArchitectureArtifact,
   createTaskTitle,
   fetchArtifacts,
   formatSurfaceContext,
   research,
 } from "../api/orchestrator";
-import { askDomainAgent } from "../api/artifactAgent";
+import {
+  askArchitectureAgent,
+  askDomainAgent,
+  type ArtifactAgentReply,
+} from "../api/artifactAgent";
 import { designDemoArtifact } from "../data/designDemo";
 
 /** A fresh session with nothing in it; the orchestrator fills it as you talk. */
@@ -40,6 +45,8 @@ interface SessionContextValue {
   orchestratorPending: boolean;
   /** True while the research agents are reading the repo to ground the artifacts. */
   researchPending: boolean;
+  /** True while the architecture modeler is drafting the architecture artifact. */
+  architecturePending: boolean;
   /** Send a message to the orchestrator on the orchestration screen. */
   sendToOrchestrator: (text: string) => void;
   /** Send a message to a single artifact's agent on its screen. */
@@ -81,6 +88,7 @@ export function SessionProvider({
   const [session, setSession] = useState<Session>(initialSession);
   const [orchestratorPending, setOrchestratorPending] = useState(false);
   const [researchPending, setResearchPending] = useState(false);
+  const [architecturePending, setArchitecturePending] = useState(false);
   // Ids of artifacts whose agent is mid-reply, so each screen can show its own
   // pending state without blocking the others.
   const [pendingArtifacts, setPendingArtifacts] = useState<Set<string>>(
@@ -140,9 +148,9 @@ export function SessionProvider({
         conversation: appendMessage(current.conversation, userMessage),
       }));
 
-      // Distill the opening prompt into a short task title that replaces the
-      // verbatim text once it returns; on failure the prompt stays as the goal.
       if (isFirstMessage) {
+        // Distill the prompt into a short task title that replaces the verbatim
+        // text once it returns; on failure the prompt stays as the goal.
         void createTaskTitle(text)
           .then((title) => {
             const trimmed = title.trim();
@@ -153,58 +161,81 @@ export function SessionProvider({
           .catch((error: unknown) => {
             console.error("Task title generation failed:", error);
           });
-      }
 
-      // The opening prompt grounds the artifact that loaded from disk. A group of
-      // research agents reads the repo to learn how it works; that domain context
-      // plus the task drives the domain agent, which edits the graph already in
-      // the deck. Research can fail (no key, no repo) — the edit still runs, just
-      // from the task alone.
-      if (
-        isFirstMessage &&
-        domainArtifact &&
-        domainArtifact.body.type === "graph"
-      ) {
-        const graph = domainArtifact.body;
-        const artifactId = domainArtifact.id;
+        // Research the repo once; its per-surface context grounds both the
+        // domain edit and the architecture draft. Research can fail (no key, no
+        // repo) — each still proceeds from the task alone.
         setResearchPending(true);
-        setArtifactPending(artifactId, true);
-        void research(text)
-          .then((context) => formatSurfaceContext(context, "domain"))
+        const repoContext = research(text)
           .catch((error: unknown) => {
             console.error("Repo research failed:", error);
             return undefined;
           })
-          .finally(() => setResearchPending(false))
-          .then((domainContext) => {
-            const request =
-              (domainContext ? `${domainContext}\n\n` : "") +
-              `The developer's task: ${text}\n\nUpdate the domain model to reflect this task.`;
-            return askDomainAgent(graph, [makeMessage("user", request)]);
-          })
-          .then((result) => {
+          .finally(() => setResearchPending(false));
+
+        // Domain: the model loaded from disk, so the prompt grounds and edits
+        // the graph already in the deck rather than drafting a new one.
+        if (domainArtifact && domainArtifact.body.type === "graph") {
+          const graph = domainArtifact.body;
+          const artifactId = domainArtifact.id;
+          setArtifactPending(artifactId, true);
+          void repoContext
+            .then((context) =>
+              context ? formatSurfaceContext(context, "domain") : undefined,
+            )
+            .then((domainContext) => {
+              const request =
+                (domainContext ? `${domainContext}\n\n` : "") +
+                `The developer's task: ${text}\n\nUpdate the domain model to reflect this task.`;
+              return askDomainAgent(graph, [makeMessage("user", request)]);
+            })
+            .then((result) => {
+              setSession((current) => ({
+                ...current,
+                artifacts: current.artifacts.map(
+                  (item): Artifact =>
+                    item.id === artifactId
+                      ? {
+                          ...item,
+                          body: result.body,
+                          status: "ready",
+                          conversation: appendMessage(
+                            item.conversation,
+                            makeMessage("domain", result.text),
+                          ),
+                        }
+                      : item,
+                ),
+              }));
+            })
+            .catch((error: unknown) => {
+              console.error("Grounding the domain artifact failed:", error);
+            })
+            .finally(() => setArtifactPending(artifactId, false));
+        }
+
+        // Architecture: the same research grounds the architecture modeler,
+        // whose graph lands in the deck when it finishes.
+        setArchitecturePending(true);
+        void repoContext
+          .then((context) =>
+            createArchitectureArtifact(
+              text,
+              context
+                ? formatSurfaceContext(context, "architecture")
+                : undefined,
+            ),
+          )
+          .then((artifact) =>
             setSession((current) => ({
               ...current,
-              artifacts: current.artifacts.map(
-                (item): Artifact =>
-                  item.id === artifactId
-                    ? {
-                        ...item,
-                        body: result.body,
-                        status: "ready",
-                        conversation: appendMessage(
-                          item.conversation,
-                          makeMessage("domain", result.text),
-                        ),
-                      }
-                    : item,
-              ),
-            }));
-          })
+              artifacts: [...current.artifacts, artifact],
+            })),
+          )
           .catch((error: unknown) => {
-            console.error("Grounding the domain artifact failed:", error);
+            console.error("Architecture artifact generation failed:", error);
           })
-          .finally(() => setArtifactPending(artifactId, false));
+          .finally(() => setArchitecturePending(false));
       }
 
       setOrchestratorPending(true);
@@ -253,11 +284,18 @@ export function SessionProvider({
         ),
       }));
 
-      // Only the domain model — a diffable graph — has an agent wired up so far.
-      // Other surfaces still just record the message until their agents land.
+      // The two diffable graphs — the domain model and the architecture map —
+      // each have an agent that edits them in place. Other surfaces still just
+      // record the message until their agents land.
       if (artifact.body.type !== "graph") return;
       const graph = artifact.body;
       const kind = artifact.kind;
+      const ask: Record<string, typeof askDomainAgent> = {
+        domain: askDomainAgent,
+        architecture: askArchitectureAgent,
+      };
+      const askAgent = ask[kind];
+      if (!askAgent) return;
 
       const reply = (message: ChatMessage, body?: Artifact["body"]) =>
         setSession((current) => ({
@@ -277,8 +315,10 @@ export function SessionProvider({
         }));
 
       setArtifactPending(artifactId, true);
-      void askDomainAgent(graph, conversation)
-        .then((result) => reply(makeMessage(kind, result.text), result.body))
+      void askAgent(graph, conversation)
+        .then((result: ArtifactAgentReply) =>
+          reply(makeMessage(kind, result.text), result.body),
+        )
         .catch((error: unknown) => {
           const message =
             error instanceof Error ? error.message : "Something went wrong";
@@ -308,6 +348,7 @@ export function SessionProvider({
       session,
       orchestratorPending,
       researchPending,
+      architecturePending,
       sendToOrchestrator,
       sendToArtifactAgent,
       artifactPending,
@@ -317,6 +358,7 @@ export function SessionProvider({
       session,
       orchestratorPending,
       researchPending,
+      architecturePending,
       sendToOrchestrator,
       sendToArtifactAgent,
       artifactPending,

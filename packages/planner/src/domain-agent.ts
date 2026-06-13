@@ -3,6 +3,8 @@ import { z } from "zod";
 
 import { artifactAgentModel } from "./models.ts";
 
+export { withGraphContext } from "./graph-context.ts";
+
 /**
  * The domain-model artifact agent. Where the orchestrator reasons across all
  * three surfaces, this agent owns a single artifact: the domain model, drawn as
@@ -71,47 +73,3 @@ export const domainEditSchema = z.object({
 });
 
 export type DomainEdit = z.infer<typeof domainEditSchema>;
-
-/** A turn in the provider-agnostic shape the frontend posts. */
-interface ChatTurn {
-  role: "user" | "assistant";
-  content: string;
-}
-
-interface GraphLike {
-  nodes: unknown[];
-  edges: unknown[];
-}
-
-/**
- * Fold the current graph into the conversation so the agent edits the real
- * model rather than inventing one. The graph rides along with the developer's
- * latest message — prepended to it, or as a fresh turn when there isn't one —
- * which keeps the user/assistant roles alternating for every provider.
- */
-export function withGraphContext(
-  graph: GraphLike,
-  turns: ChatTurn[],
-): ChatTurn[] {
-  const serialized = JSON.stringify(
-    { nodes: graph.nodes, edges: graph.edges },
-    null,
-    2,
-  );
-  const preface =
-    `Here is the domain model as it stands now, as JSON:\n\n${serialized}\n\n` +
-    `Apply the request below and return the complete updated model.`;
-
-  const lastUser = turns.reduce(
-    (found, turn, index) => (turn.role === "user" ? index : found),
-    -1,
-  );
-  if (lastUser === -1) {
-    return [{ role: "user", content: preface }, ...turns];
-  }
-  return turns.map((turn, index) =>
-    index === lastUser
-      ? { ...turn, content: `${preface}\n\n---\n\n${turn.content}` }
-      : turn,
-  );
-}
