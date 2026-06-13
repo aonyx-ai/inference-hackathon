@@ -35,6 +35,12 @@ jobs:
     permissions:
       contents: read
 
+    env:
+      # WebKitGTK cannot create an EGL display under xvfb (no GPU); fall back to
+      # software rendering so the webview composites instead of aborting.
+      WEBKIT_DISABLE_DMABUF_RENDERER: 1
+      LIBGL_ALWAYS_SOFTWARE: 1
+
     steps:
       - name: Checkout code
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
