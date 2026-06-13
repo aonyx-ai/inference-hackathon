@@ -83,8 +83,8 @@ and assertions.
 
 Apple ships no WebDriver for the embedded WKWebView, so the official Tauri stack
 ([`tauri-driver`][tauri-driver] + WebdriverIO) runs only on Linux and Windows —
-never on the macOS dev machine. To get **one** WebdriverIO suite that works both
-locally on macOS and in Linux CI, we use the cross-platform community plugin
+never on the macOS dev machine. To get a WebdriverIO suite that runs on the
+macOS dev machine at all, we use the cross-platform community plugin
 [`tauri-plugin-webdriver`][wd-plugin] by Choochmeque.
 
 Unlike `tauri-driver`, this plugin embeds a [W3C WebDriver][w3c] server directly
@@ -136,16 +136,24 @@ frontend build (`bun run build`) so the bundled assets exist:
 cd apps/desktop/src-tauri && cargo build --features webdriver
 ```
 
-### Running in CI
+### Why It Does Not Run in CI
 
-CI runs the suite on `ubuntu-latest` (see [`.github/workflows/e2e.yml`][ci]).
-The Linux runner installs WebKitGTK and the Tauri build dependencies, builds the
-debug app, and runs the suite under `xvfb` for a headless display. A macOS CI
-runner is intentionally omitted — the macOS value is fast local iteration, not a
-CI gate.
+This suite is a **local, macOS-first** tool, not a CI gate. CI gates on the fast
+unit tests above (`just test`), which cover the backend and the UI without a
+real webview.
+
+Running it in CI would mean Linux — the only headless option that fits our Flox
+toolchain — and there the embedded WebDriver server does not work. WebKitGTK
+returns `WEBKIT_JAVASCRIPT_ERROR_INVALID_RESULT` ("Unsupported result type") for
+_every_ script result — strings, booleans, and objects alike, through both of
+its JavaScript-evaluation APIs — so no `execute` call or element lookup ever
+completes. This is not specific to our toolchain: the plugin's own Linux CI is
+red for the same reason, while its Windows (WebView2) job passes. Windows would
+work but cannot use Flox, and macOS CI runners are an intentional cost we skip.
+So the real-webview path is verified by hand on macOS, and CI relies on the unit
+tests.
 
 [cc]: https://docs.anthropic.com/en/docs/claude-code
-[ci]: ../../.github/workflows/e2e.yml
 [conf]: ./e2e/wdio.conf.ts
 [happy-dom]: https://github.com/capricorn86/happy-dom
 [justfile]: ../../justfile
