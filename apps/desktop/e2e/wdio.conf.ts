@@ -111,7 +111,9 @@ export const config: WebdriverIO.Config = {
   reporters: ["spec"],
   mochaOpts: {
     ui: "bdd",
-    timeout: 60_000,
+    // Generous: a spec chains several live model calls, each with its own
+    // waitUntil, so the per-test budget must exceed their sum.
+    timeout: 180_000,
   },
 
   // Boot the planner server (the app, built with VITE_API_BASE, calls it), then

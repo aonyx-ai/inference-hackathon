@@ -22,13 +22,15 @@ async function nodeLefts(): Promise<string[]> {
   });
 }
 
-describe("domain artifact", () => {
-  it("loads its graph from disk, then edits and re-lays-out the graph", async () => {
+describe("disk artifacts", () => {
+  it("loads the domain and architecture graphs from disk, then edits one", async () => {
     const task = await browser.$(".task__goal");
     await task.waitForExist({ timeout: 10_000 });
 
-    // The codebase's domain artifact arrives from disk on start — no prompt
-    // needed — so the domain card is already in the deck. Open it.
+    // The codebase's domain and architecture artifacts both arrive from disk on
+    // start — no prompt needed. (The architecture graph is parsed from a Mermaid
+    // flowchart, the domain graph from a class diagram.)
+    await browser.$(".card--architecture").waitForExist({ timeout: 20_000 });
     const domainCard = await browser.$(".card--domain");
     await domainCard.waitForExist({ timeout: 20_000 });
     await domainCard.click();

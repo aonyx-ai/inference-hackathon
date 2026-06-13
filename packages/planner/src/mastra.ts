@@ -2,7 +2,6 @@ import { Mastra } from "@mastra/core/mastra";
 import { LibSQLStore } from "@mastra/libsql";
 
 import { architectureAgent } from "./architecture-agent.ts";
-import { architectureModeler } from "./architecture.ts";
 import { domainAgent } from "./domain-agent.ts";
 import { intakeWorkflow } from "./intake.ts";
 import { orchestrator } from "./orchestrator.ts";
@@ -22,7 +21,6 @@ export const mastra = new Mastra({
     orchestratorReviewer,
     domain: domainAgent,
     taskNamer,
-    architectureModeler,
     architecture: architectureAgent,
     planSynthesizer,
   },

@@ -21,13 +21,11 @@ export {
   withGraphContext,
   type DomainEdit,
 } from "./domain-agent.ts";
-export { parseMermaidClassDiagram } from "./mermaid-graph.ts";
 export {
-  architectureModeler,
-  generateArchitectureArtifact,
-  ArchitectureArtifactSchema,
-  type ArchitectureArtifactOutput,
-} from "./architecture.ts";
+  parseMermaidGraph,
+  parseMermaidClassDiagram,
+  parseMermaidFlowchart,
+} from "./mermaid-graph.ts";
 export {
   architectureAgent,
   architectureEditSchema,

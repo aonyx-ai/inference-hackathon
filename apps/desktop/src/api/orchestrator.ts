@@ -2,8 +2,6 @@ import type {
   Artifact,
   ChatMessage,
   GraphBody,
-  GraphEdge,
-  GraphNode,
   Plan,
 } from "@inference-hackathon/core";
 import { API_BASE, toTurns } from "./planner";
@@ -199,71 +197,6 @@ export async function synthesizePlan(
     throw new Error(data.error ?? `Plan request failed (${response.status})`);
   }
   return { overview: data.overview, steps: data.steps };
-}
-
-/** The graph the architecture modeler returns, before it is dressed as an artifact. */
-interface ArchitectureArtifactResponse {
-  title: string;
-  summary: string;
-  nodes: { id: string; label: string; group: string }[];
-  edges: { from: string; to: string; label: string }[];
-  error?: string;
-}
-
-let architectureArtifactCounter = 0;
-
-/**
- * Ask the architecture modeler to map the task as a component graph and return it
- * as a ready artifact. Like the domain artifact it is grounded by the research
- * stage when that has run, and every node and edge is marked added for the diff
- * view. The components carry their layer as a group, so the differ lays them out
- * as a stack. Throws with the server's message on failure.
- */
-export async function createArchitectureArtifact(
-  goal: string,
-  context?: string,
-): Promise<Artifact> {
-  const response = await fetch(`${API_BASE}/api/orchestrator/architecture`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(context ? { goal, context } : { goal }),
-  });
-
-  const data = (await response.json()) as ArchitectureArtifactResponse;
-  if (!response.ok) {
-    throw new Error(
-      data.error ?? `Architecture artifact request failed (${response.status})`,
-    );
-  }
-
-  architectureArtifactCounter += 1;
-  return {
-    id: `architecture-${architectureArtifactCounter}`,
-    kind: "architecture",
-    title: data.title,
-    summary: data.summary,
-    status: "ready",
-    conversation: [],
-    body: {
-      type: "graph",
-      nodes: data.nodes.map(
-        (node): GraphNode => ({
-          id: node.id,
-          label: node.label,
-          group: node.group,
-          change: "added",
-        }),
-      ),
-      edges: data.edges.map(
-        (edge): GraphEdge => ({
-          from: edge.from,
-          to: edge.to,
-          label: edge.label,
-          change: "added",
-        }),
-      ),
-    },
-  };
 }
 
 /** One artifact as the orchestrator's review sees it. */

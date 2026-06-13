@@ -8,6 +8,7 @@
   },
   "scripts": {
     "check": "bun run scripts/check.ts",
-    "render": "bun run scripts/render.ts"
+    "render": "bun run scripts/render.ts",
+    "render-artifact": "bun run scripts/render-artifact.ts"
   }
 }

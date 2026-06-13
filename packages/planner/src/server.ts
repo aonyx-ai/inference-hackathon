@@ -2,11 +2,10 @@ import { readdir, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
 import { architectureEditSchema } from "./architecture-agent.ts";
-import { generateArchitectureArtifact } from "./architecture.ts";
 import { domainEditSchema } from "./domain-agent.ts";
 import { withGraphContext } from "./graph-context.ts";
 import { mastra } from "./mastra.ts";
-import { parseMermaidClassDiagram } from "./mermaid-graph.ts";
+import { parseMermaidGraph } from "./mermaid-graph.ts";
 import { orchestratorReplySchema } from "./orchestrator.ts";
 import {
   reviewArtifactChange,
@@ -33,13 +32,6 @@ export interface OrchestratorChatRequest {
 /** The opening prompt the namer distills into a short task title. */
 export interface TaskTitleRequest {
   prompt: string;
-}
-
-/** The goal the architecture modeler maps into the architecture artifact. */
-export interface ArchitectureArtifactRequest {
-  goal: string;
-  /** Optional grounding from the repo-research stage, folded into the prompt. */
-  context?: string;
 }
 
 /** The current domain-model graph the agent edits, sent alongside the chat. */
@@ -115,7 +107,7 @@ async function readArtifacts() {
         summary: "",
         status: "ready",
         conversation: [],
-        body: { type: "graph", ...parseMermaidClassDiagram(diagram) },
+        body: { type: "graph", ...parseMermaidGraph(diagram) },
       };
     }),
   );
@@ -126,16 +118,6 @@ function hasMessages(value: unknown): value is { messages: ChatTurn[] } {
     typeof value === "object" &&
     value !== null &&
     Array.isArray((value as { messages?: unknown }).messages)
-  );
-}
-
-function isArchitectureRequest(
-  value: unknown,
-): value is ArchitectureArtifactRequest {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    typeof (value as { goal?: unknown }).goal === "string"
   );
 }
 
@@ -300,36 +282,6 @@ const server = Bun.serve({
         const message =
           error instanceof Error ? error.message : "Unknown error";
         console.error("Task title generation failed:", message);
-        return json({ error: message }, 502);
-      }
-    }
-
-    // The orchestrator's first prompt also spins up an architecture artifact:
-    // the architecture modeler maps the goal onto the components it touches.
-    if (
-      request.method === "POST" &&
-      url.pathname === "/api/orchestrator/architecture"
-    ) {
-      let body: unknown;
-      try {
-        body = await request.json();
-      } catch {
-        return json({ error: "Invalid JSON body" }, 400);
-      }
-      if (!isArchitectureRequest(body)) {
-        return json({ error: "Expected { goal: string }" }, 400);
-      }
-
-      try {
-        const artifact = await generateArchitectureArtifact(
-          body.goal,
-          body.context,
-        );
-        return json(artifact);
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Unknown error";
-        console.error("Architecture artifact generation failed:", message);
         return json({ error: message }, 502);
       }
     }

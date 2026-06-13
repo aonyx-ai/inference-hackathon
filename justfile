@@ -87,6 +87,10 @@ check-arch:
 render-architecture:
     cd packages/architecture && bun run render
 
+# Regenerate the architecture artifact the planner reads in docs/architecture.mmd
+render-architecture-artifact:
+    cd packages/architecture && bun run render-artifact
+
 # Run all fast tests (frontend unit)
 test: test-ts
 

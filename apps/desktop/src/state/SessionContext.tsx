@@ -20,7 +20,6 @@ import type {
 import { findArtifact } from "@inference-hackathon/core";
 import {
   askOrchestrator,
-  createArchitectureArtifact,
   createTaskTitle,
   fetchArtifacts,
   formatSurfaceContext,
@@ -71,8 +70,6 @@ interface SessionContextValue {
   orchestratorPending: boolean;
   /** True while the research agents are reading the repo to ground the artifacts. */
   researchPending: boolean;
-  /** True while the architecture modeler is drafting the architecture artifact. */
-  architecturePending: boolean;
   /** True while the orchestrator is reviewing a change to decide what it ripples to. */
   orchestratorReviewing: boolean;
   /** True while the synthesizer is folding the artifacts into a plan. */
@@ -136,7 +133,6 @@ export function SessionProvider({
   const [session, setSession] = useState<Session>(initialSession);
   const [orchestratorPending, setOrchestratorPending] = useState(false);
   const [researchPending, setResearchPending] = useState(false);
-  const [architecturePending, setArchitecturePending] = useState(false);
   const [reviewPending, setReviewPending] = useState(false);
   const [planPending, setPlanPending] = useState(false);
   // Ids of artifacts whose agent is mid-reply, so each screen can show its own
@@ -236,6 +232,10 @@ export function SessionProvider({
       const domainArtifact = sessionRef.current.artifacts.find(
         (artifact) =>
           artifact.kind === "domain" && artifact.body.type === "graph",
+      );
+      const architectureArtifact = sessionRef.current.artifacts.find(
+        (artifact) =>
+          artifact.kind === "architecture" && artifact.body.type === "graph",
       );
       const conversation = appendMessage(
         sessionRef.current.conversation,
@@ -346,42 +346,70 @@ export function SessionProvider({
             .finally(() => setArtifactPending(artifactId, false));
         }
 
-        // Architecture: the same research grounds the architecture modeler,
-        // whose graph lands in the deck when it finishes.
-        const archEvent = makeActivity("draft", "Mapping the architecture…", {
-          pending: true,
-          from: "architecture",
-        });
-        addActivity(archEvent);
-        setArchitecturePending(true);
-        void repoContext
-          .then((context) =>
-            createArchitectureArtifact(
-              text,
+        // Architecture: also loaded from disk, so the same research grounds an
+        // edit of the dependency graph already in the deck.
+        if (
+          architectureArtifact &&
+          architectureArtifact.body.type === "graph"
+        ) {
+          const graph = architectureArtifact.body;
+          const artifactId = architectureArtifact.id;
+          const draftEvent = makeActivity(
+            "draft",
+            "Grounding the architecture in the task…",
+            { pending: true, from: "architecture", artifactId },
+          );
+          addActivity(draftEvent);
+          setArtifactPending(artifactId, true);
+          void repoContext
+            .then((context) =>
               context
                 ? formatSurfaceContext(context, "architecture")
                 : undefined,
-            ),
-          )
-          .then((artifact) => {
-            setSession((current) => ({
-              ...current,
-              artifacts: [...current.artifacts, artifact],
-            }));
-            patchActivity(archEvent.id, {
-              pending: false,
-              text: "Drafted the architecture component map",
-              artifactId: artifact.id,
-            });
-          })
-          .catch((error: unknown) => {
-            console.error("Architecture artifact generation failed:", error);
-            patchActivity(archEvent.id, {
-              pending: false,
-              text: "Couldn't draft the architecture map",
-            });
-          })
-          .finally(() => setArchitecturePending(false));
+            )
+            .then((archContext) => {
+              const request =
+                (archContext ? `${archContext}\n\n` : "") +
+                `The developer's task: ${text}\n\nUpdate the architecture to reflect this task.`;
+              return askArchitectureAgent(graph, [
+                makeMessage("user", request),
+              ]);
+            })
+            .then((result) => {
+              setSession((current) => ({
+                ...current,
+                artifacts: current.artifacts.map(
+                  (item): Artifact =>
+                    item.id === artifactId
+                      ? {
+                          ...item,
+                          body: result.body,
+                          status: "ready",
+                          conversation: appendMessage(
+                            item.conversation,
+                            makeMessage("architecture", result.text),
+                          ),
+                        }
+                      : item,
+                ),
+              }));
+              patchActivity(draftEvent.id, {
+                pending: false,
+                text: "Updated the architecture to reflect the task",
+              });
+            })
+            .catch((error: unknown) => {
+              console.error(
+                "Grounding the architecture artifact failed:",
+                error,
+              );
+              patchActivity(draftEvent.id, {
+                pending: false,
+                text: "Couldn't update the architecture",
+              });
+            })
+            .finally(() => setArtifactPending(artifactId, false));
+        }
       }
 
       setOrchestratorPending(true);
@@ -699,7 +727,6 @@ export function SessionProvider({
       session,
       orchestratorPending,
       researchPending,
-      architecturePending,
       orchestratorReviewing: reviewPending,
       planPending,
       sendToOrchestrator,
@@ -712,7 +739,6 @@ export function SessionProvider({
       session,
       orchestratorPending,
       researchPending,
-      architecturePending,
       reviewPending,
       planPending,
       sendToOrchestrator,
