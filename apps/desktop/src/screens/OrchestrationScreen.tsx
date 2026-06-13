@@ -18,8 +18,6 @@ export function OrchestrationScreen() {
   const {
     session,
     orchestratorPending,
-    researchPending,
-    architecturePending,
     orchestratorReviewing,
     planPending,
     sendToOrchestrator,
@@ -104,23 +102,13 @@ export function OrchestrationScreen() {
           />
         </section>
 
-        {(session.artifacts.length > 0 || architecturePending) && (
+        {session.artifacts.length > 0 && (
           <section className="artifacts">
             <h2 className="artifacts__title">Artifacts</h2>
             <div className="artifacts__list">
               {session.artifacts.map((artifact) => (
                 <ArtifactCard key={artifact.id} artifact={artifact} />
               ))}
-              {architecturePending && (
-                <div className="card card--pending">
-                  <span className="card__kind">Architecture</span>
-                  <p className="card__summary">
-                    {researchPending
-                      ? "Reading the repository…"
-                      : "Mapping the architecture…"}
-                  </p>
-                </div>
-              )}
             </div>
           </section>
         )}

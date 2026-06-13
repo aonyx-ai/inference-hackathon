@@ -1,0 +1,27 @@
+flowchart LR
+  n0["architecture"]
+  n1["core"]
+  n2["domain"]
+  n3["planner"]
+  n4["desktop"]
+  n5(["@mastra/core"])
+  n6(["@mastra/libsql"])
+  n7(["zod"])
+  n8(["react"])
+  n9(["react-dom"])
+  n10(["react-markdown"])
+  n11(["react-router-dom"])
+  n12(["remark-gfm"])
+  n13(["@tauri-apps/api"])
+  n14(["@tauri-apps/plugin-opener"])
+  n3 --> n5
+  n3 --> n6
+  n3 --> n7
+  n4 --> n1
+  n4 --> n8
+  n4 --> n9
+  n4 --> n10
+  n4 --> n11
+  n4 --> n12
+  n4 --> n13
+  n4 --> n14
