@@ -1,53 +1,52 @@
-# Inference Hackathon
+# 🐳 Inference Hackathon
 
 _A better interface for scoping work for autonomous coding agents._
 
-We are participating in [Whale]'s [Inference Hackathon], which explores the
-following idea:
+Built for [Whale]'s [Inference Hackathon], which asks one question:
 
-> If you have unlimited compute, what autonomous agent system would you build?
+> If you had unlimited compute, what autonomous agent system would you build?
 
-Our hypothesis is that coding harnesses like Claude Code will keep improving at
-a great pace, getting better and better at handling complex tasks autonomously.
-This enables developers to shift their focus left: scope work and set goals, and
-then hand off the work to coding agents.
+## The Bet
 
-We strongly believe that the current interfaces between developers and agents
-are fundamentally unsuitable for such a world. As agents deliver more work more
-quickly, scoping that work becomes the bottleneck. Passing a GitHub Issue to
-Claude and then reviewing an 800 line `plan.md` doesn't cut it anymore...
+Coding harnesses like Claude Code keep getting better at carrying out complex
+work on their own. As they do, the bottleneck moves: it is no longer _writing_
+the code, it is _deciding what to build_. The frontier is goal-setting.
 
-## A Better Interface
+Today's interface for that hand-off is a chat box and an 800-line `plan.md`.
+That does not cut it. Prose plans are impossible to review at a glance, they
+hide the decisions that actually matter, and they drift out of sync the moment
+you change your mind. As agents ship more work faster, scoping becomes the
+thing that slows everyone down.
 
-When passing a task to our tool, agents start analyzing it and exploring the
-codebase. They ask clarifying questions until they fully understand the user's
-goal and the code.
+So we built the interface for the part humans should still own: framing the
+change, seeing its consequences, and approving a plan worth handing off.
 
-Then, they describe the required changes across three different surfaces:
+## What We Built
 
-1. **Architecture**: What changes to the application's architecture are
-   required?
-2. **Domain Model**: How does the change touch the domain model?
-3. **User Experience**: Does the change require changes to the application's
-   user interface or experience?
+You give the tool a feature request. Instead of a wall of text, it does what a
+good engineer does before writing code — it interrogates the task and reads the
+codebase until it understands both, then shows you the change across the three
+surfaces an engineer actually reasons about:
 
-The findings are presented as easy-to-parse artifacts that match the surface
-area. Changes to the UI are surfaced as wireframes or high-fidelity mocks,
-changes to the architecture and domain model as diffable graphs.
+1. **Architecture** — the components, surfaces, and technical decisions the
+   change touches.
+2. **Domain Model** — how the change moves the ubiquitous language and the
+   entities behind it.
+3. **User Experience** — what the change means for the interface, shown as
+   wireframes or high-fidelity mocks.
 
-Before any artifact is drafted, a group of Nemotron-powered research agents — one
-per surface — reads the actual working directory to learn how the repository
-works today. Each one maps the project, searches for the concepts the change
-touches, and reads the files that matter, then hands the artifact agents grounded
-context — relevant paths, likely touchpoints, and the conventions to honor — so
-the proposed changes fit the real code rather than the prompt alone.
+Each surface is a **diffable artifact**, not prose: architecture and the domain
+model are graphs with stable IDs, so a change reads as added, removed, or
+rerouted edges — the same way a code review reads. You iterate on the artifacts,
+approve them, and only then does the tool compile them into a `plan.md` for the
+coding agent.
 
-## Planning Process
+## How It Works
 
 ```mermaid
 sequenceDiagram
     actor User
-    User->>+Orchestrator: Prompt
+    User->>+Orchestrator: Feature request
     Note over Orchestrator: Analyze task and explore codebase
     loop Until the goal is clear
         Orchestrator->>User: Ask clarifying questions
@@ -75,44 +74,64 @@ sequenceDiagram
     Orchestrator->>-Coding Agent: Pass plan
 ```
 
-## Architecture
+## Where We Pushed
 
-Lontra is a local-first desktop app. Planning runs as an event-driven
-loop: an orchestrator interrogates the user, fans work out to per-surface
-specialist agents, and streams their artifacts back to the UI. The stack
-is a [Tauri] shell with a [React] frontend and a [Mastra] agent runtime,
-all in a [Bun] TypeScript monorepo so the UI, the agents, and the shared
-domain model speak one language.
+**Grounded by a Nemotron research swarm.** Before any artifact is drafted, a
+group of [Nemotron]-powered research agents — one per surface — reads the actual
+working directory to learn how the repository works today. Each maps the
+project, searches for the concepts the change touches, and reads the files that
+matter, then hands the artifact agents grounded context: relevant paths, likely
+touchpoints, and the conventions to honor. It is a deliberate cost-quality
+trade-off — a cheap model does the broad, parallel reading so the capable models
+can spend their budget on the careful authoring — and it keeps the proposed
+changes anchored to the real code rather than the prompt alone.
 
-### Decisions
+**The MetaLoop keeps the plan consistent.** The three artifacts are not
+independent. Edit the architecture and the domain-model and UX agents
+re-examine their own artifacts against that change, reconciling automatically —
+and escalating back to you with a question when the change forces a genuine
+decision. This cross-artifact reconciliation is the MetaLoop: the plan stays
+internally consistent as you iterate, instead of fracturing into three
+documents that quietly contradict each other.
 
-| Decision                  | Why                                           |
-| ------------------------- | --------------------------------------------- |
-| Tauri v2 (Rust + webview) | Local-first desktop; native FS/process access |
-| Bun + TS monorepo         | One language across UI, agents, and core      |
-| Mastra agent runtime      | Typed tools, workflows, and memory            |
-| Event-driven planning     | Stream questions and artifact diffs to the UI |
-| Structured artifacts      | Diffable graphs with stable IDs, not prose    |
-| Nemotron repo research    | Ground artifacts in the real code, cheaply    |
-| oxc + tsgo + Flox         | Fast, reproducible lint, format, and builds   |
+## The Demo
 
-### Workflow Model
+1. Start with a new feature request or user story.
+2. Kick off the planning process: the orchestrator reviews the input and asks
+   clarifying questions, tuned to unblock the design.
+3. Iterate on the artifacts. Editing one can trigger goal-oriented loops on the
+   others — the MetaLoop — which may escalate back to you for a decision.
+4. Approve the artifacts and merge them into a `plan.md` for the coding agent.
 
-- Orchestration uses Mastra **workflows**, not agent networks.
-- The initial plan is one suspendable workflow run (clarify and approve are
-  human-in-the-loop suspensions); the MetaLoop is event-triggered reconcile
-  runs.
-- Agents run on Mastra in a Bun sidecar — Mastra is Node, Tauri is not.
+## How It's Built
 
-### Repository Structure
+A local-first desktop app. Planning runs as an event-driven loop: an
+orchestrator interrogates the user, fans work out to per-surface specialist
+agents, and streams their artifacts back to the UI. The stack is a [Tauri]
+shell with a [React] frontend and a [Mastra] agent runtime, all in a [Bun]
+TypeScript monorepo so the UI, the agents, and the shared domain model speak one
+language.
 
-- `apps/` — the platform-specific shell (currently a Tauri + React app).
-- `packages/` — as much of the logic as possible, kept platform-independent
-  (no Tauri) and easily testable.
+| Decision                  | Why                                            |
+| ------------------------- | ---------------------------------------------- |
+| Tauri v2 (Rust + webview) | Local-first desktop; native FS/process access  |
+| Bun + TS monorepo         | One language across UI, agents, and core       |
+| Mastra agent runtime      | Typed tools, suspendable workflows, and memory |
+| Event-driven planning     | Stream questions and artifact diffs to the UI  |
+| Structured artifacts      | Diffable graphs with stable IDs, not prose     |
+| Nemotron repo research    | Ground artifacts in the real code, cheaply     |
+
+Orchestration uses Mastra **workflows** rather than agent networks: the initial
+plan is one suspendable run, where clarifying and approving are
+human-in-the-loop suspensions, and the MetaLoop is event-triggered reconcile
+runs. The agents run on Mastra in a Bun sidecar — Mastra is Node, Tauri is not.
+Logic lives in platform-independent `packages/` (no Tauri, easy to test);
+`apps/` holds the desktop shell.
 
 [bun]: https://bun.sh
 [inference hackathon]: https://luma.com/whale-t8hg
 [mastra]: https://github.com/mastra-ai/mastra
+[nemotron]: https://developer.nvidia.com/nemotron
 [react]: https://react.dev
 [tauri]: https://tauri.app
 [whale]: https://www.whale-academy.com/
