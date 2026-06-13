@@ -1,0 +1,12 @@
+{
+  "name": "@inference-hackathon/architecture",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "check": "bun run scripts/check.ts"
+  }
+}

@@ -79,6 +79,10 @@ render-domain:
 render-domain-diff:
     cd packages/domain && bun run render-diff
 
+# Check the workspace dependency graph against the architecture rules
+check-arch:
+    cd packages/architecture && bun run check
+
 # Run all fast tests (Rust unit + frontend unit)
 test: test-rust test-ts
 
