@@ -112,6 +112,7 @@
       },
       "librsvg": {
         "pkg-path": "librsvg",
+        "priority": 4,
         "systems": [
           "aarch64-linux",
           "x86_64-linux"
@@ -1692,7 +1693,7 @@
       },
       "system": "aarch64-linux",
       "group": "toplevel",
-      "priority": 5
+      "priority": 4
     },
     {
       "attr_path": "librsvg",
@@ -1727,7 +1728,7 @@
       },
       "system": "x86_64-linux",
       "group": "toplevel",
-      "priority": 5
+      "priority": 4
     },
     {
       "attr_path": "libsoup_3",

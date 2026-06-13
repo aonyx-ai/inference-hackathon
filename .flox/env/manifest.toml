@@ -63,6 +63,9 @@ libsoup_3.outputs = "all"
 librsvg.pkg-path = "librsvg"
 librsvg.systems = ["aarch64-linux", "x86_64-linux"]
 librsvg.outputs = "all"
+# librsvg and gdk-pixbuf both ship a gdk-pixbuf loaders.cache; let librsvg win
+# (a lower priority value takes precedence). The cache is irrelevant to builds.
+librsvg.priority = 4
 libayatana-appindicator.pkg-path = "libayatana-appindicator"
 libayatana-appindicator.systems = ["aarch64-linux", "x86_64-linux"]
 libayatana-appindicator.outputs = "all"
