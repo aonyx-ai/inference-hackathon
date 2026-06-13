@@ -61,5 +61,35 @@ sequenceDiagram
     Orchestrator->>-Coding Agent: Pass plan
 ```
 
+## Architecture
+
+Lontra is a local-first desktop app. Planning runs as an event-driven
+loop: an orchestrator interrogates the user, fans work out to per-surface
+specialist agents, and streams their artifacts back to the UI. The stack
+is a [Tauri] shell with a [React] frontend and a [Mastra] agent runtime,
+all in a [Bun] TypeScript monorepo so the UI, the agents, and the shared
+domain model speak one language.
+
+### Decisions
+
+| Decision                  | Why                                           |
+| ------------------------- | --------------------------------------------- |
+| Tauri v2 (Rust + webview) | Local-first desktop; native FS/process access |
+| Bun + TS monorepo         | One language across UI, agents, and core      |
+| Mastra agent runtime      | Typed tools, workflows, and memory            |
+| Event-driven planning     | Stream questions and artifact diffs to the UI |
+| Structured artifacts      | Diffable graphs with stable IDs, not prose    |
+| oxc + tsgo + Flox         | Fast, reproducible lint, format, and builds   |
+
+### Repository Structure
+
+- `apps/` — the platform-specific shell (currently a Tauri + React app).
+- `packages/` — as much of the logic as possible, kept platform-independent
+  (no Tauri) and easily testable.
+
+[bun]: https://bun.sh
 [inference hackathon]: https://luma.com/whale-t8hg
+[mastra]: https://github.com/mastra-ai/mastra
+[react]: https://react.dev
+[tauri]: https://tauri.app
 [whale]: https://www.whale-academy.com/
