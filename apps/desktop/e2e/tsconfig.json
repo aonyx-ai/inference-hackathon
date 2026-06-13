@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    // WebdriverIO injects `browser`, `$`, `$$` and `expect` as globals, and
+    // the Mocha framework provides `describe`/`it`. These ambient types pull
+    // those in. `bun` supplies the Node-compatible `node:*` builtin types the
+    // conf file uses (child_process, fs, os, path) without dragging in a
+    // conflicting @types/node — the repo standardizes on Bun's runtime types.
+    "types": [
+      "bun",
+      "@wdio/globals/types",
+      "@wdio/mocha-framework",
+      "expect-webdriverio"
+    ],
+    // The runner transpiles the config + specs per-file, so isolatedModules
+    // is fine, but we relax verbatimModuleSyntax which the base turns on —
+    // WebdriverIO's CJS-interop type packages need the looser setting.
+    "verbatimModuleSyntax": false,
+    "moduleResolution": "bundler"
+  },
+  "include": ["**/*.ts"]
+}
