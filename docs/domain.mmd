@@ -1,127 +1,161 @@
 classDiagram
   direction LR
-  namespace PlanningContext {
+  namespace ScopingContext {
   class Session {
     <<AggregateRoot>>
     +SessionId id 🔑
-    +FeatureRequest request
-    +SessionStatus status
-    +Clarification[] clarifications
-    +ArtifactId[] artifacts
-    +PlanId? plan
+    +string goal
+    +ChatMessage[] conversation
+    +Artifact[] artifacts
+    +Decision[] decisions
+    +ActivityEvent[]? activity
+    +Plan? plan
   }
-  class FeatureRequest {
-    <<ValueObject>>
-    +string prompt
-    +RequestSource? source
-    +Timestamp submittedAt
-  }
-  class Clarification {
+  class ChatMessage {
     <<Entity>>
-    +int round
+    +string id 🔑
+    +Author author
+    +string text
+    +Timestamp at
+  }
+  class Decision {
+    <<Entity>>
+    +string id 🔑
+    +ArtifactId artifactId
+    +ArtifactKind from
     +string question
-    +string? answer
+    +bool resolved
+  }
+  class ActivityEvent {
+    <<Entity>>
+    +string id 🔑
+    +ActivityKind kind
+    +ArtifactKind? from
+    +ArtifactId? artifactId
+    +string? decisionId
+    +string text
+    +bool? pending
+    +Timestamp at
   }
   class Plan {
-    <<AggregateRoot>>
-    +PlanId id 🔑
-    +SessionId session
-    +ArtifactId[] artifacts
-    +string renderedMarkdown
+    <<ValueObject>>
+    +string overview
+    +PlanStep[] steps
+  }
+  class PlanStep {
+    <<ValueObject>>
+    +string title
+    +string detail
   }
   }
   namespace ArtifactContext {
   class Artifact {
     <<AggregateRoot>>
     +ArtifactId id 🔑
-    +Surface surface
-    +Goal goal
-    +Provenance provenance
+    +ArtifactKind kind
+    +string title
+    +string summary
     +ArtifactStatus status
+    +ChatMessage[] conversation
+    +ArtifactBody body
+    +string? staleReason
+    +string? openQuestion
   }
-  class Goal {
-    <<ValueObject>>
-    +string statement
+  class ArtifactBody {
+    <<union>>
+    +BodyType type
   }
-  class Provenance {
-    <<ValueObject>>
-    +SpecialistKind producedBy
-    +ArtifactId? derivedFrom
-  }
-  class Changeset {
-    <<ValueObject>>
-    +Operation[] operations
-  }
-  class Operation {
-    <<ValueObject>>
-    +OperationKind kind
-    +StableId target
-    +Compatibility compat
-  }
-  class ArtifactChanged {
-    <<DomainEvent>>
-    +ArtifactId artifact
-  }
-  class DomainModelArtifact {
+  class GraphBody {
     <<Entity>>
-    +BoundedContext[] contexts
-    +DomainEntity[] entities
-    +Relationship[] relationships
+    +BodyType type
+    +GraphNode[] nodes
+    +GraphEdge[] edges
   }
-  class BoundedContext {
+  class WireframeBody {
     <<Entity>>
-    +ContextId id 🔑
+    +BodyType type
+    +string screen
+    +WireframeNode[] nodes
+  }
+  class DesignBody {
+    <<Entity>>
+    +BodyType type
+    +DesignScene before
+    +DesignScene after
+    +TokenDelta[]? tokens
+  }
+  class GraphNode {
+    <<ValueObject>>
+    +string id 🔑
+    +string label
+    +string? group
+    +Change? change
+  }
+  class GraphEdge {
+    <<ValueObject>>
+    +string from
+    +string to
+    +string? label
+    +Change? change
+  }
+  class WireframeNode {
+    <<ValueObject>>
+    +string id 🔑
+    +string label
+    +WireframeNodeKind kind
+    +int col
+    +int row
+    +int width
+    +int height
+    +Change? change
+  }
+  class DesignScene {
+    <<ValueObject>>
+    +string screen
+    +UiNode root
+  }
+  class UiNode {
+    <<ValueObject>>
+    +string id 🔑
+    +UiComponent component
+    +StringMap? props
+    +UiNode[]? children
+    +Change? change
+  }
+  class TokenDelta {
+    <<ValueObject>>
     +string name
-  }
-  class DomainEntity {
-    <<Entity>>
-    +NodeId id 🔑
-    +string name
-    +NodeKind kind
-    +BoundedContextId context
-    +Field[] fields
-  }
-  class Field {
-    <<ValueObject>>
-    +FieldId id 🔑
-    +string name
-    +TypeRef type
-    +bool optional
-    +FieldRole role
-  }
-  class Relationship {
-    <<Entity>>
-    +EdgeId id 🔑
-    +DomainEntityId from
-    +DomainEntityId to
-    +EdgeKind kind
-    +Cardinality cardinality
+    +string before
+    +string after
   }
   }
-  Session *-- "1" FeatureRequest : request
-  Session *-- "*" Clarification : clarifications
-  Session --> "*" Artifact : artifacts
-  Session --> "0..1" Plan : plan
-  Plan --> "1" Session : session
-  Plan --> "*" Artifact : artifacts
-  Artifact *-- "1" Goal : goal
-  Artifact *-- "1" Provenance : provenance
-  Provenance --> "0..1" Artifact : derivedFrom
-  Changeset *-- "*" Operation : operations
-  ArtifactChanged --> "1" Artifact : artifact
-  Artifact <|-- DomainModelArtifact
-  DomainModelArtifact *-- "*" BoundedContext : contexts
-  DomainModelArtifact *-- "*" DomainEntity : entities
-  DomainModelArtifact *-- "*" Relationship : relationships
-  DomainEntity --> "1" BoundedContext : context
-  DomainEntity *-- "*" Field : fields
-  Relationship --> "1" DomainEntity : from
-  Relationship --> "1" DomainEntity : to
-  note for Session "Reaches Approved only when all three Artifacts are Approved; Holds exactly one Artifact per surface"
-  note for Plan "References only Approved Artifacts"
-  note for Artifact "A Stale Artifact cannot belong to an approved Plan"
-  note for Goal "The MetaLoop reconciles each Artifact against this"
-  note for Changeset "Equals diff(before, after)"
-  note for ArtifactChanged "Published on edit; triggers the MetaLoop"
-  note for Field "A stable id is what makes a rename a modify, not delete-plus-add"
-  note for Relationship "Projected from the reference and containment fields"
+  Session *-- "*" ChatMessage : conversation
+  Session *-- "*" Artifact : artifacts
+  Session *-- "*" Decision : decisions
+  Session *-- "*" ActivityEvent : activity
+  Session *-- "0..1" Plan : plan
+  Plan *-- "*" PlanStep : steps
+  Artifact *-- "*" ChatMessage : conversation
+  Artifact *-- "1" ArtifactBody : body
+  ArtifactBody <|-- GraphBody
+  ArtifactBody <|-- WireframeBody
+  ArtifactBody <|-- DesignBody
+  GraphBody *-- "*" GraphNode : nodes
+  GraphBody *-- "*" GraphEdge : edges
+  WireframeBody *-- "*" WireframeNode : nodes
+  DesignBody *-- "1" DesignScene : before
+  DesignBody *-- "1" DesignScene : after
+  DesignBody *-- "*" TokenDelta : tokens
+  DesignScene *-- "1" UiNode : root
+  UiNode *-- "*" UiNode : children
+  Decision --> "1" Artifact : artifactId
+  ActivityEvent --> "0..1" Artifact : artifactId
+  ActivityEvent --> "0..1" Decision : decisionId
+  note for Session "An orchestrator turns the developer's goal into a Session, then spawns one artifact agent per surface: architecture, domain, and ux"
+  note for Artifact "Holds one surface's work; stale sets staleReason, needs-input sets openQuestion"
+  note for ArtifactBody "Tagged union on type; architecture and domain render as a GraphBody, ux as a WireframeBody or DesignBody"
+  note for ChatMessage "author is the user, the orchestrator, or an ArtifactKind"
+  note for Decision "An agent raises a Decision up to the orchestrator for the developer to settle"
+  note for ActivityEvent "A durable trace of background work; pending is true while it runs, false once it lands"
+  note for Plan "Synthesized once scoping is marked done; absent until then, regenerating replaces it"
+  note for UiNode "props is a string-to-string map; component is a closed vocabulary that falls back to a labeled box"

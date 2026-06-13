@@ -1,0 +1,150 @@
+Remove the Decision Entity
+
+ Context
+
+ The scoping domain has two parallel ways to surface a "the agent needs a human
+ to decide" moment:
+
+ 1. Artifact.openQuestion + status: "needs-input" — the agent bubbles a
+ single question up, the developer answers by chatting with that artifact's
+ agent. This is the live mechanism: it's what the planner agents actually
+ emit (their raise field), what OrchestrationScreen renders as a "needs
+ your input" nudge, and what QuestionBanner shows on the artifact screen.
+ 2. The Decision entity — a Session.decisions[] array plus
+ decision-raised / decision-resolved activity events. This is effectively
+ dead: raiseDecision and resolveDecision exist on SessionContext but
+ are never called anywhere, and no planner/server code ever creates a
+ Decision. It only shows up in fixtures and the diagram.
+
+ We want to delete the second mechanism entirely. The openQuestion path stays
+ and fully covers the user-facing behavior, so nothing is lost. (Note: there is
+ no database, migration, or Zod schema for decisions — Decision is purely a
+ TypeScript type plus React state. Earlier notes in plan.txt that mention a
+ libsql decisions table were speculative and do not match this codebase.)
+
+ The planner agents' raise field is not part of this — it feeds
+ openQuestion, never created Decision records, and stays as-is.
+
+ Scope of Change
+
+ 1. Core types — packages/core/src/scoping.ts
+
+ This is the source of truth. Remove:
+
+ - The Decision interface (around lines 183–189).
+ - The decisions: Decision[] field on Session (line 227).
+ - "decision-raised" and "decision-resolved" from the ActivityKind union,
+ leaving "research" | "draft" (lines 198–202).
+ - The decisionId?: string field on ActivityEvent (line 212).
+ - The openDecisions() helper (lines 252–255).
+
+ Also reword the doc comments that reference {@link Decision} so they describe
+ the openQuestion mechanism instead:
+ - The module-level comment (lines 4–8) and the ArtifactStatus needs-input
+ comment (lines 13–17) — point at openQuestion, not Decision.
+ - The ActivityKind comment (lines 191–197) — drop the sentence about
+ decision-raised/decision-resolved bookending a Decision.
+
+ 2. Domain diagram — docs/domain.mmd
+
+ Important: this file is normally generated from packages/domain/src/lontra.ts
+ via just render-domain-artifact, but on this branch the working tree has
+ diverged — it's been hand-edited to mirror scoping.ts (and lontra.ts has
+ no Decision at all). So treat domain.mmd as hand-maintained here and edit
+ it directly; do not run the generator (it would wipe the whole working-tree
+ diagram). Remove:
+
+ - +Decision[] decisions from the Session class (line 10).
+ - The entire class Decision { ... } block (lines 21–28).
+ - +string? decisionId from ActivityEvent (line 35).
+ - The three relationships: Session *-- "*" Decision : decisions (134),
+ Decision --> "1" Artifact : artifactId (151),
+ ActivityEvent --> "0..1" Decision : decisionId (153).
+ - The note for Decision (line 158).
+
+ 3. Desktop state — apps/desktop/src/state/SessionContext.tsx
+
+ - Drop Decision from the @inference-hackathon/core type import (line 16).
+ - Remove decisions: [] from emptySession (line 64).
+ - Remove raiseDecision and resolveDecision from the SessionContextValue
+ interface (lines 84–86, with their doc comments).
+ - Delete the raiseDecision and resolveDecision useCallback bodies
+ (lines 699–732).
+ - Remove both from the useMemo value object and its dependency array
+ (lines 744–745, 756–757).
+
+ 4. Orchestration screen — apps/desktop/src/screens/OrchestrationScreen.tsx
+
+ - Delete the resolved set built from session.decisions (lines 27–29).
+ - Drop the resolved={...} prop passed to <ActivityItem> (lines 60–64), so it
+ just renders event={item.activity} with onOpen.
+
+ The needsInput artifacts loop (lines 70–84) stays untouched — it's the path
+ that keeps surfacing "agent needs your input" from openQuestion.
+
+ 5. Activity item — apps/desktop/src/components/ActivityItem.tsx
+
+ - Remove the decision-raised and decision-resolved cases from
+ activityLabel() (lines 11–16). The switch then covers research and
+ draft, matching the trimmed ActivityKind.
+ - Remove the resolved prop from the component signature and its doc comment
+ (lines 27, 31–32), and delete the if (event.kind === "decision-raised" && …)
+ call-to-action branch (lines 40–47). What remains is the artifact-opens-on-
+ click / plain-history rendering.
+
+ 6. Seed + fixtures
+
+ - apps/desktop/src/data/mockSession.ts — remove decisions: [] (line 24).
+ - apps/desktop/test/fixtures.ts:
+   - Remove the decisions: [ d1, d2 ] array (lines 32–49).
+   - Remove the two decision-raised activity events act3 and act4
+ (lines 65–82).
+   - Preserve the needs-input UX: the a-arch and a-domain artifacts have
+ status: "needs-input" but no openQuestion today (they leaned on the
+ decisions). Set openQuestion on each (reuse the old decision question
+ text) so the needsInput nudge still renders.
+   - Update the fixture doc comment (lines 3–8) to say the agents raised
+ questions via openQuestion rather than decisions.
+
+ 7. Tests
+
+ - packages/core/src/scoping.test.ts — drop the openDecisions import (line 7),
+ the decisions: [...] block in makeSession (lines 27–42), and the entire
+ describe("openDecisions", ...) block (lines 54–60).
+ - apps/desktop/src/components/ActivityItem.test.tsx — delete the two decision
+ tests (lines 53–87: "an open decision wears the accent…" and "a resolved
+ decision drops the accent…").
+ - apps/desktop/src/App.test.tsx — two assertions match
+ /Architecture agent needs input/, which today comes from the
+ decision-raised activity label. After removal that text comes from the
+ needsInput/openQuestion nudge, whose label is "Architecture agent needs
+ your input". Update both the getByText assertion (line 33) and the
+ click target (line 44) to /Architecture agent needs your input/.
+
+ ArchitectureScreen.test.tsx needs no change — it reads the architecture
+ artifact from the fixture and doesn't assert on the question banner, so adding
+ openQuestion to it is harmless.
+
+ Out of Scope (leave as-is)
+
+ - packages/planner/src/{orchestrator,domain-agent,architecture-agent}.ts — the
+ word "decision" appears only in prose about the agents' raise field; no
+ Decision entity is wired there.
+ - packages/domain/src/lontra.ts, docs/domain-model.md, README.md — prose
+ uses of "decision(s)", unrelated to the entity.
+ - The planner working-tree changes already in flight on this branch.
+
+ Verification
+
+ 1. just lint-ts — catches the dropped Decision import and any dangling
+ references (TypeScript will flag session.decisions, decisionId,
+ openDecisions, raiseDecision, resolveDecision if any are missed).
+ 2. just test-ts — runs the bun test suites. Confirm App.test.tsx still passes
+ the "needs your input" assertions, ActivityItem.test.tsx and
+ scoping.test.ts pass without the decision cases, and ArchitectureScreen
+ is green.
+ 3. Sanity grep — rg -n '\bDecision\b|decisions|decisionId|openDecisions|raiseDecision|resolveDecision' apps packages docs
+ should return only the unrelated prose hits noted in "Out of Scope".
+ 4. Optionally run the desktop app and load the sampleSession fixture to confirm
+ the two artifacts still show "agent needs your input" nudges that open the
+ artifact screen.

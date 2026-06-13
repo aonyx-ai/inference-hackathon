@@ -47,7 +47,36 @@ interface WireframeBodyInput {
   nodes: WireframeNodeInput[];
 }
 
-type ArtifactBodyInput = GraphBodyInput | WireframeBodyInput;
+interface UiNodeInput {
+  id: string;
+  component: string;
+  props?: Record<string, string>;
+  children?: UiNodeInput[];
+  change?: Change;
+}
+
+interface DesignSceneInput {
+  screen: string;
+  root: UiNodeInput;
+}
+
+interface TokenDeltaInput {
+  name: string;
+  before: string;
+  after: string;
+}
+
+interface DesignBodyInput {
+  type: "design";
+  before: DesignSceneInput;
+  after: DesignSceneInput;
+  tokens?: TokenDeltaInput[];
+}
+
+type ArtifactBodyInput =
+  | GraphBodyInput
+  | WireframeBodyInput
+  | DesignBodyInput;
 
 /** One artifact as the synthesizer reads it — trimmed to what the plan needs. */
 export interface PlanArtifactInput {
@@ -127,14 +156,71 @@ function describeWireframe(body: WireframeBodyInput): string {
   return sections.join("\n");
 }
 
+/** Flatten a design scene's node tree into one depth-first list. */
+function flattenScene(root: UiNodeInput): UiNodeInput[] {
+  const out: UiNodeInput[] = [];
+  const visit = (node: UiNodeInput) => {
+    out.push(node);
+    for (const child of node.children ?? []) visit(child);
+  };
+  visit(root);
+  return out;
+}
+
+/** A short label for a design node: its text prop where it has one, else its component. */
+function nodeLabel(node: UiNodeInput): string {
+  const text = node.props?.label ?? node.props?.text ?? node.props?.placeholder;
+  return text ? `${text} (${node.component})` : node.component;
+}
+
+/** Render a design artifact's diff: the screen, token swaps, and changed components. */
+function describeDesign(body: DesignBodyInput): string {
+  const sections: string[] = [`Screen: ${body.after.screen}.`];
+
+  if (body.tokens && body.tokens.length > 0) {
+    const swaps = body.tokens
+      .map((token) => `${token.name} ${token.before} → ${token.after}`)
+      .join(", ");
+    sections.push(`Tokens: ${swaps}.`);
+  }
+
+  // Added and modified components live in the proposed scene; removed ones only
+  // survive in the current one, so each group is read from the scene that has it.
+  const proposed = flattenScene(body.after.root);
+  const groups: [Change, string][] = [
+    ["added", "Components added"],
+    ["modified", "Components changed"],
+  ];
+  for (const [change, title] of groups) {
+    const nodes = byChange(proposed, change);
+    if (nodes.length === 0) continue;
+    sections.push(`${title}: ${nodes.map(nodeLabel).join(", ")}.`);
+  }
+
+  const removed = byChange(flattenScene(body.before.root), "removed");
+  if (removed.length > 0) {
+    sections.push(`Components removed: ${removed.map(nodeLabel).join(", ")}.`);
+  }
+
+  return sections.join("\n");
+}
+
+/** Render one artifact body to readable diff lines, dispatching on its type. */
+function describeBody(body: ArtifactBodyInput): string {
+  switch (body.type) {
+    case "graph":
+      return describeGraph(body);
+    case "wireframe":
+      return describeWireframe(body);
+    case "design":
+      return describeDesign(body);
+  }
+}
+
 /** Turn one artifact into a labeled diff block for the synthesizer's prompt. */
 function describeArtifact(artifact: PlanArtifactInput): string {
   const header = `## ${KIND_LABELS[artifact.kind]}: ${artifact.title}\n${artifact.summary}`;
-  const body =
-    artifact.body.type === "graph"
-      ? describeGraph(artifact.body)
-      : describeWireframe(artifact.body);
-  return `${header}\n${body}`;
+  return `${header}\n${describeBody(artifact.body)}`;
 }
 
 const INSTRUCTIONS = `

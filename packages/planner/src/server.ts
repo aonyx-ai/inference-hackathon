@@ -3,7 +3,7 @@ import { join, resolve } from "node:path";
 
 import { architectureEditSchema } from "./architecture-agent.ts";
 import { domainEditSchema } from "./domain-agent.ts";
-import { withGraphContext } from "./graph-context.ts";
+import { withCodebaseContext, withGraphContext } from "./graph-context.ts";
 import { mastra } from "./mastra.ts";
 import { parseMermaidGraph } from "./mermaid-graph.ts";
 import { orchestratorReplySchema } from "./orchestrator.ts";
@@ -109,6 +109,35 @@ async function readArtifacts() {
         conversation: [],
         body: { type: "graph", ...parseMermaidGraph(diagram) },
       };
+    }),
+  );
+}
+
+/**
+ * The codebase artifacts the orchestrator is grounded in on every turn: the
+ * architecture map and the domain model, read fresh from disk so edits the
+ * specialist agents make are reflected the next time the orchestrator runs.
+ */
+const GROUNDING_DIAGRAMS: { stem: string; noun: string }[] = [
+  { stem: "architecture", noun: "Architecture" },
+  { stem: "domain", noun: "Domain model" },
+];
+
+/**
+ * Read the grounding diagrams' Mermaid source from the codebase's `docs` folder.
+ * A missing file is not an error — its diagram is simply left out, so a codebase
+ * that has not drawn one yet still works.
+ */
+async function readGroundingDiagrams() {
+  return Promise.all(
+    GROUNDING_DIAGRAMS.map(async ({ stem, noun }) => {
+      let mermaid: string;
+      try {
+        mermaid = await readFile(join(ARTIFACTS_DIR, `${stem}.mmd`), "utf8");
+      } catch {
+        mermaid = "";
+      }
+      return { noun, mermaid };
     }),
   );
 }
@@ -245,10 +274,13 @@ const server = Bun.serve({
       }
 
       try {
-        const result = await orchestrator.generate(
-          toModelMessages(body.messages),
-          { structuredOutput: { schema: orchestratorReplySchema } },
+        const grounded = withCodebaseContext(
+          await readGroundingDiagrams(),
+          body.messages,
         );
+        const result = await orchestrator.generate(toModelMessages(grounded), {
+          structuredOutput: { schema: orchestratorReplySchema },
+        });
         const reply = result.object;
         return json({
           text: reply.reply,

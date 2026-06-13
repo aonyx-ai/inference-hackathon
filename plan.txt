@@ -1,0 +1,17 @@
+Remove the Decision entity and its relationships from the domain and data layer, then clean up any references to decisions across the codebase. A minor UX update to the Project Dashboard swaps the accent colour tokens from terracotta to blue and adds a Share button alongside the existing primary actions.
+
+1
+Delete the Decision entity and its schema
+Remove the Decision type, table definition, and any Zod schema from the domain model layer. This is the core removal shown in the Domain Model diff — Decision itself plus the three relationships (Session→Decision, Decision→Artifact, ActivityEvent→decisionId).
+2
+Drop decisions from the Session aggregate
+Remove the `decisions` collection/field from the Session entity and any logic that populates or traverses it, as the Session→Decision relationship is gone.
+3
+Remove decisionId from ActivityEvent
+Strip the `decisionId` field and any foreign-key reference from the ActivityEvent entity/schema, as that relationship is removed in the domain diff.
+4
+Clean up database migrations and storage
+Add or update a migration (libsql via @mastra/libsql) to drop the decisions table and remove the decisionId column from activity_events. Ensure no orphaned queries or prepared statements reference decisions.
+5
+Remove decision-related planner and core logic
+Delete or refactor any planner or @mastra/core code that creates, reads, or updates Decision records — route handlers, service methods, or Mastra workflow steps that reference the removed entity.

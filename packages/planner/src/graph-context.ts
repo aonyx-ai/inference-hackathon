@@ -50,3 +50,44 @@ export function withGraphContext(
       : turn,
   );
 }
+
+/** A named diagram of the codebase as it stands today, in Mermaid source. */
+export interface CodebaseDiagram {
+  noun: string;
+  mermaid: string;
+}
+
+/**
+ * Ground the orchestrator in the codebase it is scoping changes against. Unlike
+ * {@link withGraphContext}, this is read-only background, not an artifact to
+ * edit, so it rides along with the developer's *first* message rather than their
+ * latest — the orchestrator should know the existing system from the opening
+ * turn. Diagrams with no source are skipped; with none at all the conversation
+ * passes through untouched, so a codebase with no artifacts yet still works.
+ */
+export function withCodebaseContext(
+  diagrams: CodebaseDiagram[],
+  turns: ChatTurn[],
+): ChatTurn[] {
+  const present = diagrams.filter((diagram) => diagram.mermaid.trim() !== "");
+  if (present.length === 0) return turns;
+
+  const sections = present
+    .map((diagram) => `${diagram.noun}, in Mermaid:\n\n${diagram.mermaid.trim()}`)
+    .join("\n\n");
+  const preface =
+    "For context, here is the codebase you are scoping changes against, as it " +
+    "stands today. Ground your scoping in it: reason about how the requested " +
+    "change touches these real components and entities, and refer to them by " +
+    `their actual names rather than inventing a system from scratch.\n\n${sections}`;
+
+  const firstUser = turns.findIndex((turn) => turn.role === "user");
+  if (firstUser === -1) {
+    return [{ role: "user", content: preface }, ...turns];
+  }
+  return turns.map((turn, index) =>
+    index === firstUser
+      ? { ...turn, content: `${preface}\n\n---\n\n${turn.content}` }
+      : turn,
+  );
+}
