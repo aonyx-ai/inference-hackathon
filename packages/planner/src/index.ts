@@ -8,13 +8,21 @@ export {
   type DomainArtifactOutput,
 } from "./domain.ts";
 export {
+  domainAgent,
+  domainEditSchema,
+  withGraphContext,
+  type DomainEdit,
+} from "./domain-agent.ts";
+export {
   anthropicModel,
+  artifactAgentModel,
   nebiusModel,
   orchestratorModel,
   type ModelProvider,
 } from "./models.ts";
 export type {
   ChatTurn,
-  OrchestratorChatRequest,
   DomainArtifactRequest,
+  DomainChatRequest,
+  OrchestratorChatRequest,
 } from "./server.ts";

@@ -7,6 +7,8 @@ interface ConversationThreadProps {
   messages: ChatMessage[];
   placeholder: string;
   onSend: (text: string) => void;
+  /** True while the agent is generating a reply; blocks input and shows a hint. */
+  pending?: boolean;
 }
 
 /** A self-contained chat pane: header, messages, and a composer. */
@@ -15,6 +17,7 @@ export function ConversationThread({
   messages,
   placeholder,
   onSend,
+  pending = false,
 }: ConversationThreadProps) {
   return (
     <section className="thread">
@@ -26,7 +29,8 @@ export function ConversationThread({
           <Message key={message.id} message={message} />
         ))}
       </ol>
-      <Composer placeholder={placeholder} onSend={onSend} />
+      {pending && <p className="thread__pending">Agent is thinking…</p>}
+      <Composer placeholder={placeholder} onSend={onSend} disabled={pending} />
     </section>
   );
 }

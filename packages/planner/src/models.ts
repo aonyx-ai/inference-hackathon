@@ -49,3 +49,12 @@ export function orchestratorModel(): MastraModelConfig {
     "anthropic") as ModelProvider;
   return provider === "nebius" ? nebiusModel() : anthropicModel();
 }
+
+/**
+ * The model that backs the per-artifact agents — the domain-model editor and
+ * its future siblings. It shares the orchestrator's provider selection, since
+ * the whole planner runs on one provider for the demo.
+ */
+export function artifactAgentModel(): MastraModelConfig {
+  return orchestratorModel();
+}

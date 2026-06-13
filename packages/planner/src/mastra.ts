@@ -1,6 +1,7 @@
 import { Mastra } from "@mastra/core/mastra";
 import { LibSQLStore } from "@mastra/libsql";
 
+import { domainAgent } from "./domain-agent.ts";
 import { intakeWorkflow } from "./intake.ts";
 import { orchestrator } from "./orchestrator.ts";
 import { domainModeler } from "./domain.ts";
@@ -12,5 +13,5 @@ import { domainModeler } from "./domain.ts";
 export const mastra = new Mastra({
   storage: new LibSQLStore({ id: "planner", url: ":memory:" }),
   workflows: { intake: intakeWorkflow },
-  agents: { orchestrator, domainModeler },
+  agents: { orchestrator, domainModeler, domain: domainAgent },
 });

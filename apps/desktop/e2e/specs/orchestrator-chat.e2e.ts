@@ -1,12 +1,29 @@
-// Real end-to-end test of the chat wiring: drives the actual webview, sends the
-// opening prompt, and waits for both the orchestrator's reply and the domain
-// artifact it spins up. Both are genuine model calls routed through the planner's
-// Mastra server (booted by wdio.conf's onPrepare and reached via the
-// VITE_API_BASE the app was built with), so this exercises the full path —
-// composer, session state, fetch, agents, render.
+// Real end-to-end test of the full chat-to-artifact loop. It drives the actual
+// webview: the opening prompt makes the orchestrator reply and spins up a domain
+// artifact, then we open that artifact and ask its agent to grow the model, and
+// watch the graph re-render and re-lay-out. Every reply is a genuine model call
+// routed through the planner's Mastra server (booted by wdio.conf's onPrepare
+// and reached via the VITE_API_BASE the app was built with), so this exercises
+// the whole path — composer, session state, fetch, both agents, and render.
+//
+// This is one continuous spec on purpose: the embedded WebDriver server drives a
+// single, persistent app instance with no reset between specs, so the artifact
+// flow continues from where the orchestrator flow leaves off rather than living
+// in a second spec that would inherit this one's navigation.
+
+/** The `left` style of every rendered graph node, e.g. ["50%", "79.4%"]. */
+async function nodeLefts(): Promise<string[]> {
+  const styles = await browser
+    .$$(".graph__node")
+    .map((el) => el.getAttribute("style"));
+  return styles.map((style) => {
+    const match = /left:\s*([^;]+)/.exec(style ?? "");
+    return match?.[1]?.trim() ?? "";
+  });
+}
 
 describe("orchestrator chat", () => {
-  it("opens a task, replies, and produces a domain artifact", async () => {
+  it("replies, spins up a domain artifact, then edits and re-lays-out its graph", async () => {
     const task = await browser.$(".task__goal");
     await task.waitForExist({ timeout: 10_000 });
 
@@ -45,8 +62,46 @@ describe("orchestrator chat", () => {
     }
 
     // The opening prompt also spins up the domain artifact, which lands in the
-    // deck as a domain card once the modeler returns.
+    // deck as a domain card once the modeler returns. Open it.
     const domainCard = await browser.$(".card--domain");
     await domainCard.waitForExist({ timeout: 45_000 });
+    await domainCard.click();
+
+    // Its graph is on the canvas. A domain model has several entities, so the
+    // renderer must spread them across more than one column — anything but a
+    // single stacked column means the edges can be read rather than piling onto
+    // one vertical line.
+    const firstNode = await browser.$(".graph__node");
+    await firstNode.waitForExist({ timeout: 10_000 });
+    const nodeCountBefore = await browser.$$(".graph__node").length;
+    if (new Set(await nodeLefts()).size <= 1) {
+      throw new Error("Generated graph collapsed into a single column");
+    }
+
+    // Ask the artifact's agent for a clearly new entity, so the model has to add
+    // to the graph rather than restate it.
+    const agentInput = await browser.$("input.composer__input");
+    await agentInput.waitForExist({ timeout: 10_000 });
+    await agentInput.setValue(
+      "Add a Notification entity that a User receives when an export finishes.",
+    );
+    await browser.$("button.composer__send").click();
+
+    // The edit returns the full updated graph, which lands as more nodes on the
+    // canvas — proving the artifact re-rendered from the agent's reply.
+    await browser.waitUntil(
+      async () => (await browser.$$(".graph__node").length) > nodeCountBefore,
+      {
+        timeout: 60_000,
+        interval: 1_000,
+        timeoutMsg: "The graph never grew after the agent's edit",
+      },
+    );
+
+    // Re-jigged, not collapsed: the larger graph still spreads across more than
+    // one column, so its edges don't pile onto a single vertical line.
+    if (new Set(await nodeLefts()).size <= 1) {
+      throw new Error("Nodes collapsed into a single column after editing");
+    }
   });
 });
