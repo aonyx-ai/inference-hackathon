@@ -12,7 +12,7 @@ import { useSession } from "../state/SessionContext";
  * opens that artifact's screen.
  */
 export function OrchestrationScreen() {
-  const { session, sendToOrchestrator } = useSession();
+  const { session, orchestratorPending, sendToOrchestrator } = useSession();
   const navigate = useNavigate();
   const open = openDecisions(session);
 
@@ -45,9 +45,13 @@ export function OrchestrationScreen() {
               </li>
             ))}
           </ol>
+          {orchestratorPending && (
+            <p className="activity__pending">Orchestrator is thinking…</p>
+          )}
           <Composer
             placeholder="Reply to the orchestrator…"
             onSend={sendToOrchestrator}
+            disabled={orchestratorPending}
           />
         </section>
 

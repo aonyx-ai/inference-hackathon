@@ -13,6 +13,21 @@ import { resolve } from "node:path";
 const HOST = "127.0.0.1";
 const PORT = 4445;
 
+// The planner's Mastra server the bundled webview talks to. A packaged build
+// has no Vite proxy, so the app is built with `VITE_API_BASE` pointing here and
+// we run the server ourselves for the duration of the e2e run.
+const PLANNER_PORT = 8787;
+const PLANNER_ENTRY = resolve(
+  import.meta.dirname,
+  "..",
+  "..",
+  "..",
+  "packages",
+  "planner",
+  "src",
+  "server.ts",
+);
+
 const TAURI_ROOT = resolve(import.meta.dirname, "..", "src-tauri");
 
 /**
@@ -43,22 +58,30 @@ function resolveBinary(): string {
 }
 
 let appProcess: ChildProcess | undefined;
+let plannerProcess: ChildProcess | undefined;
 
-async function waitForServer(timeoutMs: number): Promise<void> {
+async function waitForUrl(url: string, timeoutMs: number): Promise<boolean> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     try {
-      const res = await fetch(`http://${HOST}:${PORT}/status`);
-      if (res.ok) return;
+      const res = await fetch(url);
+      if (res.ok) return true;
     } catch {
       // server not up yet
     }
     await new Promise((r) => setTimeout(r, 250));
   }
-  throw new Error(
-    `WebDriver server never came up on http://${HOST}:${PORT} within ${timeoutMs}ms. ` +
-      `Is the plugin registered under #[cfg(debug_assertions)] and is this a debug build?`,
-  );
+  return false;
+}
+
+async function waitForServer(timeoutMs: number): Promise<void> {
+  const up = await waitForUrl(`http://${HOST}:${PORT}/status`, timeoutMs);
+  if (!up) {
+    throw new Error(
+      `WebDriver server never came up on http://${HOST}:${PORT} within ${timeoutMs}ms. ` +
+        `Is the plugin registered under #[cfg(debug_assertions)] and is this a debug build?`,
+    );
+  }
 }
 
 export const config: WebdriverIO.Config = {
@@ -92,9 +115,24 @@ export const config: WebdriverIO.Config = {
     timeout: 60_000,
   },
 
-  // Launch the real debug app (which boots the embedded WebDriver server),
-  // then block until that server answers before any session is created.
+  // Boot the planner server (the app, built with VITE_API_BASE, calls it), then
+  // launch the real debug app (which starts the embedded WebDriver server), and
+  // block until both answer before any session is created.
   onPrepare: async () => {
+    plannerProcess = spawn("bun", ["run", PLANNER_ENTRY], {
+      stdio: "inherit",
+      env: { ...process.env, PLANNER_PORT: String(PLANNER_PORT) },
+    });
+    const plannerUp = await waitForUrl(
+      `http://localhost:${PLANNER_PORT}/api/health`,
+      30_000,
+    );
+    if (!plannerUp) {
+      throw new Error(
+        `Planner server never came up on http://localhost:${PLANNER_PORT} within 30s.`,
+      );
+    }
+
     const binary = resolveBinary();
     appProcess = spawn(binary, [], {
       stdio: "inherit",
@@ -107,5 +145,7 @@ export const config: WebdriverIO.Config = {
   onComplete: async () => {
     appProcess?.kill("SIGTERM");
     appProcess = undefined;
+    plannerProcess?.kill("SIGTERM");
+    plannerProcess = undefined;
   },
 };

@@ -100,6 +100,13 @@ button {
   gap: 14px;
 }
 
+.activity__pending {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-faint);
+  font-style: italic;
+}
+
 .message {
   display: flex;
   flex-direction: column;

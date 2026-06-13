@@ -3,14 +3,23 @@ import {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
-import type { Artifact, ChatMessage, Session } from "@inference-hackathon/core";
+import type {
+  Artifact,
+  Author,
+  ChatMessage,
+  Session,
+} from "@inference-hackathon/core";
 import { mockSession } from "../data/mockSession";
+import { askOrchestrator } from "../api/orchestrator";
 
 interface SessionContextValue {
   session: Session;
+  /** True while the orchestrator is generating a reply. */
+  orchestratorPending: boolean;
   /** Send a message to the orchestrator on the orchestration screen. */
   sendToOrchestrator: (text: string) => void;
   /** Send a message to a single artifact's agent on its screen. */
@@ -22,9 +31,14 @@ interface SessionContextValue {
 const SessionContext = createContext<SessionContextValue | null>(null);
 
 let messageCounter = 0;
-function nextId(): string {
+function makeMessage(author: Author, text: string): ChatMessage {
   messageCounter += 1;
-  return `local-${messageCounter}`;
+  return {
+    id: `local-${messageCounter}`,
+    author,
+    text,
+    at: new Date().toISOString(),
+  };
 }
 
 function appendMessage(messages: ChatMessage[], message: ChatMessage) {
@@ -33,17 +47,47 @@ function appendMessage(messages: ChatMessage[], message: ChatMessage) {
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session>(mockSession);
+  const [orchestratorPending, setOrchestratorPending] = useState(false);
+
+  // The latest committed session, readable synchronously after an `await`
+  // without closing over a stale render.
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
 
   const sendToOrchestrator = useCallback((text: string) => {
+    const userMessage = makeMessage("user", text);
+    const conversation = appendMessage(
+      sessionRef.current.conversation,
+      userMessage,
+    );
     setSession((current) => ({
       ...current,
-      conversation: appendMessage(current.conversation, {
-        id: nextId(),
-        author: "user",
-        text,
-        at: new Date().toISOString(),
-      }),
+      conversation: appendMessage(current.conversation, userMessage),
     }));
+
+    setOrchestratorPending(true);
+    void askOrchestrator(conversation)
+      .then((reply) => {
+        setSession((current) => ({
+          ...current,
+          conversation: appendMessage(
+            current.conversation,
+            makeMessage("orchestrator", reply),
+          ),
+        }));
+      })
+      .catch((error: unknown) => {
+        const message =
+          error instanceof Error ? error.message : "Something went wrong";
+        setSession((current) => ({
+          ...current,
+          conversation: appendMessage(
+            current.conversation,
+            makeMessage("orchestrator", `⚠️ ${message}`),
+          ),
+        }));
+      })
+      .finally(() => setOrchestratorPending(false));
   }, []);
 
   const sendToArtifactAgent = useCallback(
@@ -55,12 +99,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
             artifact.id === artifactId
               ? {
                   ...artifact,
-                  conversation: appendMessage(artifact.conversation, {
-                    id: nextId(),
-                    author: "user",
-                    text,
-                    at: new Date().toISOString(),
-                  }),
+                  conversation: appendMessage(
+                    artifact.conversation,
+                    makeMessage("user", text),
+                  ),
                 }
               : artifact,
         ),
@@ -81,11 +123,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const value = useMemo<SessionContextValue>(
     () => ({
       session,
+      orchestratorPending,
       sendToOrchestrator,
       sendToArtifactAgent,
       resolveDecision,
     }),
-    [session, sendToOrchestrator, sendToArtifactAgent, resolveDecision],
+    [
+      session,
+      orchestratorPending,
+      sendToOrchestrator,
+      sendToArtifactAgent,
+      resolveDecision,
+    ],
   );
 
   return (
