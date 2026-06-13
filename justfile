@@ -75,9 +75,16 @@ lint-yaml:
 render-domain:
     cd packages/domain && bun run render
 
-# Run tests with bun
+# Run all fast tests (Rust unit + frontend unit)
+test: test-rust test-ts
+
+# Run frontend unit tests with bun
 test-ts:
     bun test
+
+# Run Rust unit tests
+test-rust:
+    cd apps/desktop/src-tauri && cargo test --locked
 
 # Run the Tauri desktop app in development
 tauri-dev:
