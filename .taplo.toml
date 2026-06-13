@@ -1,1 +1,1 @@
-exclude = [".flox/**"]
+exclude = [".flox/**", "node_modules/**", "dist/**"]

@@ -1,1 +1,18 @@
+# Managed by Flox
 .flox/
+
+# Dependencies and build output
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Bun lockfile
+bun.lock
+
+# TypeScript and JavaScript are formatted by oxfmt, not prettier
+*.ts
+*.tsx
+*.js
+*.jsx
+*.mjs
+*.cjs
