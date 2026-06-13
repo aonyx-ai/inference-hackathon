@@ -3,6 +3,7 @@ import { artifactKindLabel, findArtifact } from "@inference-hackathon/core";
 import { ConversationThread } from "../components/ConversationThread";
 import { ArtifactBody } from "../components/artifact/ArtifactBody";
 import { DriftBanner } from "../components/DriftBanner";
+import { QuestionBanner } from "../components/QuestionBanner";
 import { StatusPill } from "../components/StatusPill";
 import { useSession } from "../state/SessionContext";
 
@@ -48,6 +49,9 @@ export function ArtifactScreen() {
       </header>
       {artifact.staleReason ? (
         <DriftBanner reason={artifact.staleReason} />
+      ) : null}
+      {artifact.openQuestion ? (
+        <QuestionBanner question={artifact.openQuestion} />
       ) : null}
       <div className="artifact__main">
         <div className="artifact__canvas">

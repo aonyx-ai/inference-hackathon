@@ -1,6 +1,7 @@
 import type {
   Artifact,
   ChatMessage,
+  GraphBody,
   GraphEdge,
   GraphNode,
 } from "@inference-hackathon/core";
@@ -219,4 +220,76 @@ export async function createArchitectureArtifact(
       ),
     },
   };
+}
+
+/** One artifact as the orchestrator's review sees it. */
+export interface ReviewArtifactInput {
+  id: string;
+  kind: string;
+  title: string;
+  summary: string;
+  digest: string;
+}
+
+/** What the webview posts for a review: the change and the artifacts it might touch. */
+export interface ReviewInput {
+  goal: string;
+  changed: ReviewArtifactInput & { changeSummary: string };
+  others: ReviewArtifactInput[];
+}
+
+/** An instruction the orchestrator aims at one other artifact's agent. */
+export interface ReviewDirective {
+  artifactId: string;
+  instruction: string;
+}
+
+/** The orchestrator's verdict on a change: a note for the developer and directives. */
+export interface Review {
+  note: string;
+  directives: ReviewDirective[];
+}
+
+/**
+ * Render a graph as a compact one-line digest the orchestrator can reason over
+ * without the full body — entity and component labels, plus the labeled edges
+ * between them. Removed nodes and edges are dropped, since they no longer stand.
+ */
+export function graphDigest(body: GraphBody): string {
+  const label = new Map(body.nodes.map((node) => [node.id, node.label]));
+  const nodes = body.nodes
+    .filter((node) => node.change !== "removed")
+    .map((node) => node.label);
+  const edges = body.edges
+    .filter((edge) => edge.change !== "removed")
+    .map((edge) => {
+      const from = label.get(edge.from) ?? edge.from;
+      const to = label.get(edge.to) ?? edge.to;
+      return edge.label ? `${from} ${edge.label} ${to}` : `${from} → ${to}`;
+    });
+  const parts = [`nodes: ${nodes.join(", ") || "(none)"}`];
+  if (edges.length > 0) parts.push(`edges: ${edges.join("; ")}`);
+  return parts.join(" | ");
+}
+
+/**
+ * Ask the orchestrator to review a change one artifact agent just made and decide
+ * what it forces elsewhere. Returns the note to show the developer and the
+ * directives to fan back out to the other agents. Throws with the server's
+ * message on failure, so a failed review never silently swallows the change.
+ */
+export async function reviewArtifactChange(
+  input: ReviewInput,
+): Promise<Review> {
+  const response = await fetch(`${API_BASE}/api/orchestrator/review`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+
+  const data = (await response.json()) as Review & { error?: string };
+  if (!response.ok) {
+    throw new Error(data.error ?? `Review request failed (${response.status})`);
+  }
+  return { note: data.note ?? "", directives: data.directives ?? [] };
 }

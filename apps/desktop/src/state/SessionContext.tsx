@@ -12,6 +12,7 @@ import type {
   Artifact,
   Author,
   ChatMessage,
+  GraphBody,
   Session,
 } from "@inference-hackathon/core";
 import { findArtifact } from "@inference-hackathon/core";
@@ -21,14 +22,36 @@ import {
   createTaskTitle,
   fetchArtifacts,
   formatSurfaceContext,
+  graphDigest,
   research,
+  reviewArtifactChange,
+  type Review,
+  type ReviewArtifactInput,
 } from "../api/orchestrator";
-import {
-  askArchitectureAgent,
-  askDomainAgent,
-  type ArtifactAgentReply,
-} from "../api/artifactAgent";
+import { askArchitectureAgent, askDomainAgent } from "../api/artifactAgent";
 import { designDemoArtifact } from "../data/designDemo";
+
+/**
+ * How deep a single change is allowed to cascade. A developer edit (depth 0) can
+ * prompt other agents to rethink (depth 1), and those rethinks can ripple once
+ * more (depth 2) before the chain stops. The `visited` set already prevents two
+ * surfaces from prompting each other forever; this is a backstop.
+ */
+const MAX_CASCADE_DEPTH = 2;
+
+/** Asks a graph artifact agent to edit its graph; domain and architecture share this shape. */
+type AskArtifactAgent = typeof askDomainAgent;
+
+/**
+ * The editing agent for an artifact kind, or undefined for kinds without one
+ * (the wireframe and design surfaces). Resolved lazily by kind so a test that
+ * mocks only one agent never trips over the other's binding at module load.
+ */
+function agentFor(kind: string): AskArtifactAgent | undefined {
+  if (kind === "domain") return askDomainAgent;
+  if (kind === "architecture") return askArchitectureAgent;
+  return undefined;
+}
 
 /** A fresh session with nothing in it; the orchestrator fills it as you talk. */
 const emptySession: Session = {
@@ -47,6 +70,8 @@ interface SessionContextValue {
   researchPending: boolean;
   /** True while the architecture modeler is drafting the architecture artifact. */
   architecturePending: boolean;
+  /** True while the orchestrator is reviewing a change to decide what it ripples to. */
+  orchestratorReviewing: boolean;
   /** Send a message to the orchestrator on the orchestration screen. */
   sendToOrchestrator: (text: string) => void;
   /** Send a message to a single artifact's agent on its screen. */
@@ -89,6 +114,7 @@ export function SessionProvider({
   const [orchestratorPending, setOrchestratorPending] = useState(false);
   const [researchPending, setResearchPending] = useState(false);
   const [architecturePending, setArchitecturePending] = useState(false);
+  const [reviewPending, setReviewPending] = useState(false);
   // Ids of artifacts whose agent is mid-reply, so each screen can show its own
   // pending state without blocking the others.
   const [pendingArtifacts, setPendingArtifacts] = useState<Set<string>>(
@@ -265,39 +291,68 @@ export function SessionProvider({
     [setArtifactPending],
   );
 
-  const sendToArtifactAgent = useCallback(
-    (artifactId: string, text: string) => {
-      const artifact = findArtifact(sessionRef.current, artifactId);
-      if (!artifact) return;
+  // A snapshot of one artifact in the shape the orchestrator's review reasons
+  // over: identity, intent, and a compact digest of its current graph.
+  const reviewInputFor = useCallback(
+    (artifact: Artifact): ReviewArtifactInput | null =>
+      artifact.body.type === "graph" && agentFor(artifact.kind)
+        ? {
+            id: artifact.id,
+            kind: artifact.kind,
+            title: artifact.title,
+            summary: artifact.summary,
+            digest: graphDigest(artifact.body),
+          }
+        : null,
+    [],
+  );
 
-      const userMessage = makeMessage("user", text);
-      const conversation = appendMessage(artifact.conversation, userMessage);
+  // Run one agent turn against a graph artifact: show the prompt in its thread,
+  // ask the agent, then fold its reply, its edited graph, and any question it
+  // raised back into state. A developer prompt answers any open question; an
+  // orchestrator directive leaves the artifact marked stale while it reworks.
+  // Returns the new graph and the reply, or null when there's no agent or it
+  // errored.
+  const runAgentTurn = useCallback(
+    async (
+      artifactId: string,
+      prompt: ChatMessage,
+      staleReason?: string,
+    ): Promise<{ body: GraphBody; reply: string } | null> => {
+      const artifact = findArtifact(sessionRef.current, artifactId);
+      if (!artifact || artifact.body.type !== "graph") return null;
+      const askAgent = agentFor(artifact.kind);
+      if (!askAgent) return null;
+
+      const graph = artifact.body;
+      const kind = artifact.kind;
+      // The model always sees the prompt as the actionable user request, even
+      // when the orchestrator authored it in the thread, so the agent acts on it.
+      const modelConversation = appendMessage(
+        artifact.conversation,
+        makeMessage("user", prompt.text),
+      );
+
       setSession((current) => ({
         ...current,
-        artifacts: current.artifacts.map((item) =>
-          item.id === artifactId
-            ? {
-                ...item,
-                conversation: appendMessage(item.conversation, userMessage),
-              }
-            : item,
+        artifacts: current.artifacts.map(
+          (item): Artifact =>
+            item.id === artifactId
+              ? {
+                  ...item,
+                  conversation: appendMessage(item.conversation, prompt),
+                  ...(prompt.author === "user"
+                    ? { openQuestion: undefined }
+                    : {}),
+                  ...(staleReason ? { status: "stale", staleReason } : {}),
+                }
+              : item,
         ),
       }));
 
-      // The two diffable graphs — the domain model and the architecture map —
-      // each have an agent that edits them in place. Other surfaces still just
-      // record the message until their agents land.
-      if (artifact.body.type !== "graph") return;
-      const graph = artifact.body;
-      const kind = artifact.kind;
-      const ask: Record<string, typeof askDomainAgent> = {
-        domain: askDomainAgent,
-        architecture: askArchitectureAgent,
-      };
-      const askAgent = ask[kind];
-      if (!askAgent) return;
-
-      const reply = (message: ChatMessage, body?: Artifact["body"]) =>
+      setArtifactPending(artifactId, true);
+      try {
+        const result = await askAgent(graph, modelConversation);
         setSession((current) => ({
           ...current,
           artifacts: current.artifacts.map(
@@ -305,28 +360,170 @@ export function SessionProvider({
               item.id === artifactId
                 ? {
                     ...item,
-                    conversation: appendMessage(item.conversation, message),
-                    ...(body
-                      ? { body, status: "ready", staleReason: undefined }
-                      : {}),
+                    conversation: appendMessage(
+                      item.conversation,
+                      makeMessage(kind, result.text),
+                    ),
+                    body: result.body,
+                    status: result.raise ? "needs-input" : "ready",
+                    staleReason: undefined,
+                    openQuestion: result.raise,
                   }
                 : item,
           ),
         }));
-
-      setArtifactPending(artifactId, true);
-      void askAgent(graph, conversation)
-        .then((result: ArtifactAgentReply) =>
-          reply(makeMessage(kind, result.text), result.body),
-        )
-        .catch((error: unknown) => {
-          const message =
-            error instanceof Error ? error.message : "Something went wrong";
-          reply(makeMessage(kind, `⚠️ ${message}`));
-        })
-        .finally(() => setArtifactPending(artifactId, false));
+        return { body: result.body, reply: result.text };
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Something went wrong";
+        setSession((current) => ({
+          ...current,
+          artifacts: current.artifacts.map(
+            (item): Artifact =>
+              item.id === artifactId
+                ? {
+                    ...item,
+                    conversation: appendMessage(
+                      item.conversation,
+                      makeMessage(kind, `⚠️ ${message}`),
+                    ),
+                  }
+                : item,
+          ),
+        }));
+        return null;
+      } finally {
+        setArtifactPending(artifactId, false);
+      }
     },
     [setArtifactPending],
+  );
+
+  // After a change, ask the orchestrator what it forces elsewhere, narrate its
+  // verdict in the main thread, and fan its directives back out to the other
+  // agents — each of which can ripple once more. `visited` stops two surfaces
+  // from prompting each other forever; the depth cap is a backstop.
+  const propagateChange = useCallback(
+    async (
+      changed: ReviewArtifactInput & { changeSummary: string },
+      visited: Set<string>,
+      depth: number,
+    ): Promise<void> => {
+      const others = sessionRef.current.artifacts
+        .filter((item) => !visited.has(item.id))
+        .map(reviewInputFor)
+        .filter((item): item is ReviewArtifactInput => item !== null);
+      if (others.length === 0) return;
+
+      setReviewPending(true);
+      let review: Review | null = null;
+      try {
+        review = await reviewArtifactChange({
+          goal: sessionRef.current.goal,
+          changed,
+          others,
+        });
+      } catch (error) {
+        console.error("Orchestrator review failed:", error);
+      } finally {
+        setReviewPending(false);
+      }
+      if (!review) return;
+
+      if (review.note.trim()) {
+        setSession((current) => ({
+          ...current,
+          conversation: appendMessage(
+            current.conversation,
+            makeMessage("orchestrator", review.note),
+          ),
+        }));
+      }
+      if (depth >= MAX_CASCADE_DEPTH) return;
+
+      const directives = review.directives.filter(
+        (directive) =>
+          !visited.has(directive.artifactId) &&
+          findArtifact(sessionRef.current, directive.artifactId),
+      );
+      await Promise.all(
+        directives.map(async (directive) => {
+          visited.add(directive.artifactId);
+          const result = await runAgentTurn(
+            directive.artifactId,
+            makeMessage("orchestrator", directive.instruction),
+            directive.instruction,
+          );
+          if (!result) return;
+          const target = findArtifact(sessionRef.current, directive.artifactId);
+          if (!target) return;
+          await propagateChange(
+            {
+              id: target.id,
+              kind: target.kind,
+              title: target.title,
+              summary: target.summary,
+              digest: graphDigest(result.body),
+              changeSummary: result.reply,
+            },
+            visited,
+            depth + 1,
+          );
+        }),
+      );
+    },
+    [reviewInputFor, runAgentTurn],
+  );
+
+  const sendToArtifactAgent = useCallback(
+    (artifactId: string, text: string) => {
+      const artifact = findArtifact(sessionRef.current, artifactId);
+      if (!artifact) return;
+
+      // Surfaces without an editing agent (the wireframe and design) just record
+      // the turn.
+      if (artifact.body.type !== "graph" || !agentFor(artifact.kind)) {
+        setSession((current) => ({
+          ...current,
+          artifacts: current.artifacts.map((item) =>
+            item.id === artifactId
+              ? {
+                  ...item,
+                  conversation: appendMessage(
+                    item.conversation,
+                    makeMessage("user", text),
+                  ),
+                }
+              : item,
+          ),
+        }));
+        return;
+      }
+
+      const meta = {
+        id: artifact.id,
+        kind: artifact.kind,
+        title: artifact.title,
+        summary: artifact.summary,
+      };
+      void runAgentTurn(artifactId, makeMessage("user", text)).then(
+        (result) => {
+          if (!result) return;
+          // The developer's edit lands first; then the orchestrator reviews it
+          // and the change ripples out to the other surfaces.
+          return propagateChange(
+            {
+              ...meta,
+              digest: graphDigest(result.body),
+              changeSummary: result.reply,
+            },
+            new Set([artifactId]),
+            0,
+          );
+        },
+      );
+    },
+    [propagateChange, runAgentTurn],
   );
 
   const artifactPending = useCallback(
@@ -349,6 +546,7 @@ export function SessionProvider({
       orchestratorPending,
       researchPending,
       architecturePending,
+      orchestratorReviewing: reviewPending,
       sendToOrchestrator,
       sendToArtifactAgent,
       artifactPending,
@@ -359,6 +557,7 @@ export function SessionProvider({
       orchestratorPending,
       researchPending,
       architecturePending,
+      reviewPending,
       sendToOrchestrator,
       sendToArtifactAgent,
       artifactPending,

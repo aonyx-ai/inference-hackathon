@@ -8,6 +8,14 @@ export {
   type TaskTitleOutput,
 } from "./title.ts";
 export {
+  orchestratorReviewer,
+  reviewArtifactChange,
+  reviewSchema,
+  type Review,
+  type ReviewArtifact,
+  type ReviewInput,
+} from "./orchestrator-review.ts";
+export {
   domainAgent,
   domainEditSchema,
   withGraphContext,

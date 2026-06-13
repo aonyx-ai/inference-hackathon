@@ -5,6 +5,8 @@ import { API_BASE, toTurns } from "./planner";
 export interface ArtifactAgentReply {
   text: string;
   body: GraphBody;
+  /** A question the agent bubbled up for the developer to settle, if any. */
+  raise?: string;
 }
 
 /** Back-compat alias for the domain agent's reply shape. */
@@ -32,6 +34,7 @@ async function askGraphAgent(
   const data = (await response.json()) as {
     text?: string;
     body?: GraphBody;
+    raise?: string;
     error?: string;
   };
   if (!response.ok || !data.body) {
@@ -39,7 +42,7 @@ async function askGraphAgent(
       data.error ?? `${label} agent request failed (${response.status})`,
     );
   }
-  return { text: data.text ?? "", body: data.body };
+  return { text: data.text ?? "", body: data.body, raise: data.raise };
 }
 
 /** Ask the domain-model agent to edit the model. */

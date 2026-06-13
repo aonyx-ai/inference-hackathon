@@ -17,10 +17,16 @@ export function OrchestrationScreen() {
     orchestratorPending,
     researchPending,
     architecturePending,
+    orchestratorReviewing,
     sendToOrchestrator,
   } = useSession();
   const navigate = useNavigate();
   const open = openDecisions(session);
+  // Artifacts whose agent bubbled a question up to the orchestrator: each is a
+  // nudge to open that artifact and answer in its thread.
+  const needsInput = session.artifacts.filter(
+    (artifact) => artifact.openQuestion,
+  );
   const started = session.conversation.length > 0;
 
   return (
@@ -57,6 +63,21 @@ export function OrchestrationScreen() {
                 </button>
               </li>
             ))}
+            {needsInput.map((artifact) => (
+              <li key={`needs-input-${artifact.id}`}>
+                <button
+                  className="activity-item"
+                  onClick={() => navigate(`/artifact/${artifact.id}`)}
+                >
+                  <span className="activity-item__label">
+                    {artifactKindLabel(artifact.kind)} agent needs your input
+                  </span>
+                  <span className="activity-item__text">
+                    {artifact.openQuestion}
+                  </span>
+                </button>
+              </li>
+            ))}
           </ol>
           {researchPending && (
             <p className="activity__pending">
@@ -65,6 +86,11 @@ export function OrchestrationScreen() {
           )}
           {orchestratorPending && (
             <p className="activity__pending">Orchestrator is thinking…</p>
+          )}
+          {orchestratorReviewing && (
+            <p className="activity__pending">
+              Orchestrator is reviewing the change across surfaces…
+            </p>
           )}
           <Composer
             placeholder={

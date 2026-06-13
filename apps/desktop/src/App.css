@@ -659,6 +659,37 @@ button {
   color: #7d5413;
 }
 
+/* An agent's bubbled-up question, banded across the artifact it belongs to.
+   Wears the accent, Aonyx's signal that a human is needed here. */
+.question {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 22px;
+  background: var(--accent-soft);
+  border-bottom: 1px solid var(--accent-edge);
+  color: var(--accent-ink);
+  font-size: 12px;
+  letter-spacing: 0.01em;
+}
+
+.question__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.question__text {
+  color: var(--accent-ink);
+}
+
 /* ---- Graph diff ---------------------------------------------------------- */
 
 .graph {
