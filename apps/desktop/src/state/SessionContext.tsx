@@ -13,8 +13,16 @@ import type {
   ChatMessage,
   Session,
 } from "@inference-hackathon/core";
-import { mockSession } from "../data/mockSession";
 import { askOrchestrator } from "../api/orchestrator";
+
+/** A fresh session with nothing in it; the orchestrator fills it as you talk. */
+const emptySession: Session = {
+  id: "session",
+  goal: "",
+  conversation: [],
+  artifacts: [],
+  decisions: [],
+};
 
 interface SessionContextValue {
   session: Session;
@@ -45,8 +53,15 @@ function appendMessage(messages: ChatMessage[], message: ChatMessage) {
   return [...messages, message];
 }
 
-export function SessionProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session>(mockSession);
+export function SessionProvider({
+  children,
+  initialSession = emptySession,
+}: {
+  children: ReactNode;
+  /** Seed state, used by tests; the app starts from an empty session. */
+  initialSession?: Session;
+}) {
+  const [session, setSession] = useState<Session>(initialSession);
   const [orchestratorPending, setOrchestratorPending] = useState(false);
 
   // The latest committed session, readable synchronously after an `await`
@@ -62,6 +77,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     );
     setSession((current) => ({
       ...current,
+      // The opening message states the task, so it becomes the session goal.
+      goal: current.goal || text,
       conversation: appendMessage(current.conversation, userMessage),
     }));
 

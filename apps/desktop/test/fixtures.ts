@@ -1,11 +1,12 @@
 import type { Session } from "@inference-hackathon/core";
 
 /**
- * A worked example used to drive the prototype: a developer asks to add PDF
+ * A worked example session used as a test fixture: a developer asks to add PDF
  * export to a dashboard, and the orchestrator has fanned the work out to the
- * three artifact agents. Two agents have already raised questions.
+ * three artifact agents, two of which have already raised questions. The app
+ * itself starts from an empty session — this only seeds the screens under test.
  */
-export const mockSession: Session = {
+export const sampleSession: Session = {
   id: "session-pdf-export",
   goal: "Let users export their dashboard as a PDF",
   conversation: [

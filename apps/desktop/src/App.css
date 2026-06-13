@@ -83,6 +83,11 @@ button {
   font-weight: 600;
 }
 
+.task__goal--empty {
+  color: var(--text-faint);
+  font-weight: 500;
+}
+
 /* ---- Chat and activity history ------------------------------------------- */
 
 .activity {

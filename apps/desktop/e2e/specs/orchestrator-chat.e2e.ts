@@ -11,9 +11,7 @@ describe("orchestrator chat", () => {
 
     const feedSizeBefore = await browser.$$("li.message").length;
 
-    const input = await browser.$(
-      'input[placeholder="Reply to the orchestrator…"]',
-    );
+    const input = await browser.$("input.composer__input");
     await input.waitForExist({ timeout: 10_000 });
     const prompt = "In one short sentence, what will you scope first?";
     await input.setValue(prompt);
