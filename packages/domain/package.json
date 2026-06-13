@@ -7,6 +7,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "render": "bun run scripts/render.ts"
+    "render": "bun run scripts/render.ts",
+    "render-diff": "bun run scripts/render-diff.ts"
   }
 }
