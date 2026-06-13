@@ -15,15 +15,16 @@ pre-commit:
     just prettier true
     just format-toml true
     just format-ts true
+    just format-rust true
     just lint-ts
     just check-types
     just lint-github-actions
     just lint-markdown
     just lint-yaml
 
-# Type-check all packages with the native (Go) TypeScript compiler
+# Type-check every package with the native (Go) TypeScript compiler
 check-types:
-    bunx tsgo
+    for cfg in packages/*/tsconfig.json apps/*/tsconfig.json; do echo "→ $cfg"; bunx tsgo -p "$cfg" || exit 1; done
 
 # Format JSON files
 format-json fix="false": (prettier fix "{json,json5}")
@@ -34,6 +35,10 @@ format-markdown fix="false": (prettier fix "md")
 # Format TOML files
 format-toml fix="false":
     taplo fmt {{ if fix != "true" { "--diff" } else { "" } }}
+
+# Format Rust code with rustfmt
+format-rust fix="false":
+    cd apps/desktop/src-tauri && cargo fmt {{ if fix != "true" { "-- --check" } else { "" } }}
 
 # Format TypeScript and JavaScript with oxfmt (prettier owns JSON/YAML/Markdown)
 format-ts fix="false":
@@ -54,6 +59,10 @@ lint-markdown:
 lint-toml:
     taplo check
 
+# Lint Rust code with clippy
+lint-rust:
+    cd apps/desktop/src-tauri && cargo clippy --all-targets --locked -- -D warnings
+
 # Lint TypeScript and JavaScript with oxlint
 lint-ts:
     bunx oxlint
@@ -65,6 +74,18 @@ lint-yaml:
 # Run tests with bun
 test-ts:
     bun test
+
+# Run the Tauri desktop app in development
+tauri-dev:
+    cd apps/desktop && bun run tauri dev
+
+# Build the Tauri desktop app
+tauri-build:
+    cd apps/desktop && bun run tauri build
+
+# Print Tauri environment diagnostics
+tauri-info:
+    cd apps/desktop && bun run tauri info
 
 # Auto-format files with prettier
 prettier fix="false" extension="*":

@@ -1,3 +1,5 @@
 .flox/
 node_modules/
 dist/
+target/
+gen/

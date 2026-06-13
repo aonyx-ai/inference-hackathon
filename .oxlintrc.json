@@ -1,9 +1,13 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["typescript", "oxc", "import"],
+  "plugins": ["typescript", "oxc", "import", "react", "jsx-a11y"],
   "categories": {
     "correctness": "error",
     "suspicious": "warn"
+  },
+  "rules": {
+    "react/react-in-jsx-scope": "off",
+    "import/no-unassigned-import": "off"
   },
   "ignorePatterns": ["**/dist/**", "**/node_modules/**"]
 }

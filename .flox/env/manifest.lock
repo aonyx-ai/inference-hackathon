@@ -6,9 +6,30 @@
       "bun": {
         "pkg-path": "bun"
       },
+      "clang": {
+        "pkg-path": "clang",
+        "systems": [
+          "aarch64-darwin",
+          "x86_64-darwin"
+        ]
+      },
+      "gcc": {
+        "pkg-path": "gcc",
+        "systems": [
+          "aarch64-linux",
+          "x86_64-linux"
+        ]
+      },
       "git": {
         "pkg-path": "git",
         "outputs": "all"
+      },
+      "gtk3": {
+        "pkg-path": "gtk3",
+        "systems": [
+          "aarch64-linux",
+          "x86_64-linux"
+        ]
       },
       "gum": {
         "pkg-path": "gum"
@@ -16,6 +37,34 @@
       "just": {
         "pkg-path": "just",
         "outputs": "all"
+      },
+      "libayatana-appindicator": {
+        "pkg-path": "libayatana-appindicator",
+        "systems": [
+          "aarch64-linux",
+          "x86_64-linux"
+        ]
+      },
+      "libiconv": {
+        "pkg-path": "libiconv",
+        "systems": [
+          "aarch64-darwin",
+          "x86_64-darwin"
+        ]
+      },
+      "librsvg": {
+        "pkg-path": "librsvg",
+        "systems": [
+          "aarch64-linux",
+          "x86_64-linux"
+        ]
+      },
+      "libsoup_3": {
+        "pkg-path": "libsoup_3",
+        "systems": [
+          "aarch64-linux",
+          "x86_64-linux"
+        ]
       },
       "markdownlint-cli": {
         "pkg-path": "markdownlint-cli"
@@ -27,6 +76,13 @@
         "pkg-path": "parallel",
         "outputs": "all"
       },
+      "pkg-config": {
+        "pkg-path": "pkg-config",
+        "systems": [
+          "aarch64-linux",
+          "x86_64-linux"
+        ]
+      },
       "pre-commit": {
         "pkg-path": "pre-commit",
         "outputs": "all"
@@ -34,8 +90,22 @@
       "prettier": {
         "pkg-path": "prettier"
       },
+      "rust-lib-src": {
+        "pkg-path": "rustPlatform.rustLibSrc",
+        "pkg-group": "rust-toolchain"
+      },
+      "rustup": {
+        "pkg-path": "rustup"
+      },
       "taplo": {
         "pkg-path": "taplo"
+      },
+      "webkitgtk_4_1": {
+        "pkg-path": "webkitgtk_4_1",
+        "systems": [
+          "aarch64-linux",
+          "x86_64-linux"
+        ]
       },
       "yamllint": {
         "pkg-path": "yamllint",
@@ -52,6 +122,118 @@
     "options": {}
   },
   "packages": [
+    {
+      "attr_path": "rustPlatform.rustLibSrc",
+      "broken": false,
+      "derivation": "/nix/store/py3d3rzb3w2gbwpwf1ni3js616s1f09n-rust-lib-src.drv",
+      "install_id": "rust-lib-src",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=9ae611a455b90cf061d8f332b977e387bda8e1ca",
+      "name": "rust-lib-src",
+      "pname": "rustLibSrc",
+      "rev": "9ae611a455b90cf061d8f332b977e387bda8e1ca",
+      "rev_count": 1014179,
+      "rev_date": "2026-06-10T06:56:03Z",
+      "scrape_date": "2026-06-12T03:16:59.559805Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "rust-lib-src",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/8ppj5bksxfg8js9g5hdh3ixp8p26ryh8-rust-lib-src"
+      },
+      "system": "aarch64-darwin",
+      "group": "rust-toolchain",
+      "priority": 5
+    },
+    {
+      "attr_path": "rustPlatform.rustLibSrc",
+      "broken": false,
+      "derivation": "/nix/store/xqa1irwks15wlv89vw09bz5iz64gjc5s-rust-lib-src.drv",
+      "install_id": "rust-lib-src",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=9ae611a455b90cf061d8f332b977e387bda8e1ca",
+      "name": "rust-lib-src",
+      "pname": "rustLibSrc",
+      "rev": "9ae611a455b90cf061d8f332b977e387bda8e1ca",
+      "rev_count": 1014179,
+      "rev_date": "2026-06-10T06:56:03Z",
+      "scrape_date": "2026-06-12T03:48:38.445179Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "rust-lib-src",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/kqmadl7aslp212n9dkyjmzi69v7rirnp-rust-lib-src"
+      },
+      "system": "aarch64-linux",
+      "group": "rust-toolchain",
+      "priority": 5
+    },
+    {
+      "attr_path": "rustPlatform.rustLibSrc",
+      "broken": false,
+      "derivation": "/nix/store/g0ak8hi052hmrq9df3iz7sdjwzkg8cly-rust-lib-src.drv",
+      "install_id": "rust-lib-src",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=9ae611a455b90cf061d8f332b977e387bda8e1ca",
+      "name": "rust-lib-src",
+      "pname": "rustLibSrc",
+      "rev": "9ae611a455b90cf061d8f332b977e387bda8e1ca",
+      "rev_count": 1014179,
+      "rev_date": "2026-06-10T06:56:03Z",
+      "scrape_date": "2026-06-12T04:17:41.794639Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "rust-lib-src",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/17bg4qab9q04yy0r3zxwbcpwpf6dvzbz-rust-lib-src"
+      },
+      "system": "x86_64-darwin",
+      "group": "rust-toolchain",
+      "priority": 5
+    },
+    {
+      "attr_path": "rustPlatform.rustLibSrc",
+      "broken": false,
+      "derivation": "/nix/store/pmy61a1cx8m0xi9rqdl0r7m6ffjmhbv2-rust-lib-src.drv",
+      "install_id": "rust-lib-src",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=9ae611a455b90cf061d8f332b977e387bda8e1ca",
+      "name": "rust-lib-src",
+      "pname": "rustLibSrc",
+      "rev": "9ae611a455b90cf061d8f332b977e387bda8e1ca",
+      "rev_count": 1014179,
+      "rev_date": "2026-06-10T06:56:03Z",
+      "scrape_date": "2026-06-12T04:51:39.450512Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "rust-lib-src",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/q6kjf0h1czkacdiqmv79rc6nkj6s146m-rust-lib-src"
+      },
+      "system": "x86_64-linux",
+      "group": "rust-toolchain",
+      "priority": 5
+    },
     {
       "attr_path": "bun",
       "broken": false,
@@ -171,6 +353,139 @@
       ],
       "outputs": {
         "out": "/nix/store/g0zlmqvkvn41xqva3460jfzpazivywvi-bun-1.3.13"
+      },
+      "system": "x86_64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "clang",
+      "broken": false,
+      "derivation": "/nix/store/4wiccm7akykiqx5lpbgv8nskk32arg1w-clang-wrapper-21.1.8.drv",
+      "description": "C language family frontend for LLVM (wrapper script)",
+      "install_id": "clang",
+      "license": "[ NCSA, [ Apache-2.0 LLVM-exception ] ]",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "name": "clang-wrapper-21.1.8",
+      "pname": "clang",
+      "rev": "da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "rev_count": 995699,
+      "rev_date": "2026-05-10T19:57:52Z",
+      "scrape_date": "2026-05-13T08:52:40.197831Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "21.1.8",
+      "outputs_to_install": [
+        "out",
+        "out",
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/rwsbw420hcq148hifv7fga6r4g0k1dw8-clang-wrapper-21.1.8"
+      },
+      "system": "aarch64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "clang",
+      "broken": false,
+      "derivation": "/nix/store/65i5gvpv8rj6ncrv12d1yw3jiaw83zbb-clang-wrapper-21.1.8.drv",
+      "description": "C language family frontend for LLVM (wrapper script)",
+      "install_id": "clang",
+      "license": "[ NCSA, [ Apache-2.0 LLVM-exception ] ]",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "name": "clang-wrapper-21.1.8",
+      "pname": "clang",
+      "rev": "da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "rev_count": 995699,
+      "rev_date": "2026-05-10T19:57:52Z",
+      "scrape_date": "2026-05-13T09:55:21.868039Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "21.1.8",
+      "outputs_to_install": [
+        "out",
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/b27wqif15k5b2k7j13ajh401d2g4a9m6-clang-wrapper-21.1.8"
+      },
+      "system": "x86_64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "gcc",
+      "broken": false,
+      "derivation": "/nix/store/5lp3x82znbxsk3gxfna72nxqz1zjm3ha-gcc-wrapper-15.2.0.drv",
+      "description": "GNU Compiler Collection, version 15.2.0 (wrapper script)",
+      "install_id": "gcc",
+      "license": "GPL-3.0-or-later",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "name": "gcc-wrapper-15.2.0",
+      "pname": "gcc",
+      "rev": "da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "rev_count": 995699,
+      "rev_date": "2026-05-10T19:57:52Z",
+      "scrape_date": "2026-05-13T09:22:14.973915Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "15.2.0",
+      "outputs_to_install": [
+        "man",
+        "out",
+        "out"
+      ],
+      "outputs": {
+        "info": "/nix/store/q487ij6jvnbvwwqnqf2yzacplj0nl1lm-gcc-wrapper-15.2.0-info",
+        "man": "/nix/store/d5svqdhdiryldnkaphaxwamiwxnadcid-gcc-wrapper-15.2.0-man",
+        "out": "/nix/store/xvvipinc7wngr82akl5i61bxdh10rajw-gcc-wrapper-15.2.0"
+      },
+      "system": "aarch64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "gcc",
+      "broken": false,
+      "derivation": "/nix/store/mcmj9cdln6f4y3dp35bwbf9ghmp2cd9j-gcc-wrapper-15.2.0.drv",
+      "description": "GNU Compiler Collection, version 15.2.0 (wrapper script)",
+      "install_id": "gcc",
+      "license": "GPL-3.0-or-later",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "name": "gcc-wrapper-15.2.0",
+      "pname": "gcc",
+      "rev": "da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "rev_count": 995699,
+      "rev_date": "2026-05-10T19:57:52Z",
+      "scrape_date": "2026-05-13T10:36:03.527474Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "15.2.0",
+      "outputs_to_install": [
+        "man",
+        "man",
+        "out",
+        "out",
+        "out"
+      ],
+      "outputs": {
+        "info": "/nix/store/k8zz91jx73nabxg7hh8yshab5w9y4rq8-gcc-wrapper-15.2.0-info",
+        "man": "/nix/store/s03w1r1shmmzs1zz367aplbfyq2vgcfg-gcc-wrapper-15.2.0-man",
+        "out": "/nix/store/qd70v8g0561vm8m33kmnp79z00cgyi5n-gcc-wrapper-15.2.0"
       },
       "system": "x86_64-linux",
       "group": "toplevel",
@@ -303,6 +618,77 @@
         "debug": "/nix/store/qyqya20z59d164d6692hlyb9pkq10ykk-git-2.53.0-debug",
         "doc": "/nix/store/vv1ap6qaxdzpa4jqg71myxh5wcvnlqv8-git-2.53.0-doc",
         "out": "/nix/store/c0277k5giric1mn9dklllavbzvxl6hzb-git-2.53.0"
+      },
+      "system": "x86_64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "gtk3",
+      "broken": false,
+      "derivation": "/nix/store/im9vnfp8v3dlynizwf1m6x2nsfk13cjv-gtk+3-3.24.52.drv",
+      "description": "Multi-platform toolkit for creating graphical user interfaces",
+      "install_id": "gtk3",
+      "license": "LGPL-2.0-or-later",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "name": "gtk+3-3.24.52",
+      "pname": "gtk3",
+      "rev": "da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "rev_count": 995699,
+      "rev_date": "2026-05-10T19:57:52Z",
+      "scrape_date": "2026-05-13T09:22:16.129627Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "gtk+3-3.24.52",
+      "outputs_to_install": [
+        "out",
+        "out",
+        "out"
+      ],
+      "outputs": {
+        "debug": "/nix/store/gfs74yka1b1fmj2iqq1qdgys5j14j62b-gtk+3-3.24.52-debug",
+        "dev": "/nix/store/n1xnvshr12x863x5bzc4ias2p2hmckr3-gtk+3-3.24.52-dev",
+        "devdoc": "/nix/store/zam63030dzhhh1wpnyz38fkr7gla33a8-gtk+3-3.24.52-devdoc",
+        "out": "/nix/store/svrh48fpyagfr355lp3r0gw9x078nvmm-gtk+3-3.24.52"
+      },
+      "system": "aarch64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "gtk3",
+      "broken": false,
+      "derivation": "/nix/store/7g57wp0j56qapynccaqmdpx4nb1gbslw-gtk+3-3.24.52.drv",
+      "description": "Multi-platform toolkit for creating graphical user interfaces",
+      "install_id": "gtk3",
+      "license": "LGPL-2.0-or-later",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "name": "gtk+3-3.24.52",
+      "pname": "gtk3",
+      "rev": "da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "rev_count": 995699,
+      "rev_date": "2026-05-10T19:57:52Z",
+      "scrape_date": "2026-05-13T10:36:04.806639Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "gtk+3-3.24.52",
+      "outputs_to_install": [
+        "out",
+        "out",
+        "out",
+        "out"
+      ],
+      "outputs": {
+        "debug": "/nix/store/flrdish1q6wsxwkkmq08dvkgys0clwzw-gtk+3-3.24.52-debug",
+        "dev": "/nix/store/fl75ki4bwr8lj8w63c1yr4v3np177sv7-gtk+3-3.24.52-dev",
+        "devdoc": "/nix/store/dlymyi6zswb187jsdbacnmpy2haqp0mx-gtk+3-3.24.52-devdoc",
+        "out": "/nix/store/8ycx83hg9ba53hmlgq9qcfnm5yikd70j-gtk+3-3.24.52"
       },
       "system": "x86_64-linux",
       "group": "toplevel",
@@ -556,6 +942,275 @@
         "doc": "/nix/store/nk0p7b0n1fqg0sa2vasgavrhgi7xy9rz-just-1.50.0-doc",
         "man": "/nix/store/6mrjsdff8skgnnn0ngyim2i7wabk0c8x-just-1.50.0-man",
         "out": "/nix/store/vr4agmy8jw7f8kqynpizagdaqxy0ayw4-just-1.50.0"
+      },
+      "system": "x86_64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "libayatana-appindicator",
+      "broken": false,
+      "derivation": "/nix/store/2sf7dnm36a3b24fcs6hzb6i0fyp21gjj-libayatana-appindicator-0.5.92.drv",
+      "description": "Ayatana Application Indicators Shared Library",
+      "install_id": "libayatana-appindicator",
+      "license": "[ LGPL-3.0-or-later, LGPL-2.1-or-later ]",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "name": "libayatana-appindicator-0.5.92",
+      "pname": "libayatana-appindicator",
+      "rev": "da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "rev_count": 995699,
+      "rev_date": "2026-05-10T19:57:52Z",
+      "scrape_date": "2026-05-13T09:22:39.232689Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "0.5.92",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/j58kr498dgwkw53bdvzl5rf19yk7piyl-libayatana-appindicator-0.5.92-dev",
+        "out": "/nix/store/dvm8m4fx7vaifg2qgblsbkf6vcv2xfp5-libayatana-appindicator-0.5.92"
+      },
+      "system": "aarch64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "libayatana-appindicator",
+      "broken": false,
+      "derivation": "/nix/store/fjs9m2wjwyahs504kbqsi1kl4c123835-libayatana-appindicator-0.5.92.drv",
+      "description": "Ayatana Application Indicators Shared Library",
+      "install_id": "libayatana-appindicator",
+      "license": "[ LGPL-3.0-or-later, LGPL-2.1-or-later ]",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "name": "libayatana-appindicator-0.5.92",
+      "pname": "libayatana-appindicator",
+      "rev": "da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "rev_count": 995699,
+      "rev_date": "2026-05-10T19:57:52Z",
+      "scrape_date": "2026-05-13T10:36:27.355127Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "0.5.92",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/giw9khg66vyr3yhzcz0ixlss77sjiva0-libayatana-appindicator-0.5.92-dev",
+        "out": "/nix/store/mvn3i2k90277mxsca1g3fzq6n5p27zaq-libayatana-appindicator-0.5.92"
+      },
+      "system": "x86_64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "libiconv",
+      "broken": false,
+      "derivation": "/nix/store/vcff06a9m4jlpmbam6j0hkzcbqi38zzm-libiconv-109.100.2.drv",
+      "description": "Iconv(3) implementation",
+      "install_id": "libiconv",
+      "license": "[ BSD-2-Clause, BSD-3-Clause, APSL-1.0 ]",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "name": "libiconv-109.100.2",
+      "pname": "libiconv",
+      "rev": "da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "rev_count": 995699,
+      "rev_date": "2026-05-10T19:57:52Z",
+      "scrape_date": "2026-05-13T08:52:58.629086Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "109.100.2",
+      "outputs_to_install": [
+        "out",
+        "out",
+        "out",
+        "out",
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/3bg9vly81n5485kk4fax49qrjglnl87n-libiconv-109.100.2-dev",
+        "out": "/nix/store/xvmhkpvfvmy4sfdkqwg9inq3qkpnx81b-libiconv-109.100.2"
+      },
+      "system": "aarch64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "libiconv",
+      "broken": false,
+      "derivation": "/nix/store/26c2adwsj2h471mynrsbilnhdxwx5jib-libiconv-109.100.2.drv",
+      "description": "Iconv(3) implementation",
+      "install_id": "libiconv",
+      "license": "[ BSD-2-Clause, BSD-3-Clause, APSL-1.0 ]",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "name": "libiconv-109.100.2",
+      "pname": "libiconv",
+      "rev": "da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "rev_count": 995699,
+      "rev_date": "2026-05-10T19:57:52Z",
+      "scrape_date": "2026-05-13T09:55:40.510749Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "109.100.2",
+      "outputs_to_install": [
+        "out",
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/i94cdyf3gkqkwnymp8s2sja6mfwiwrsw-libiconv-109.100.2-dev",
+        "out": "/nix/store/hnkrdp05dma6apdpcf2nr8cdwyxrm7gl-libiconv-109.100.2"
+      },
+      "system": "x86_64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "librsvg",
+      "broken": false,
+      "derivation": "/nix/store/2ny8znd6bgahai6lg6r265mk5qyj7mfj-librsvg-2.61.4.drv",
+      "description": "Small library to render SVG images to Cairo surfaces",
+      "install_id": "librsvg",
+      "license": "LGPL-2.0-or-later",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "name": "librsvg-2.61.4",
+      "pname": "librsvg",
+      "rev": "da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "rev_count": 995699,
+      "rev_date": "2026-05-10T19:57:52Z",
+      "scrape_date": "2026-05-13T09:22:40.598146Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "2.61.4",
+      "outputs_to_install": [
+        "out",
+        "out",
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/1fy2g3z7sm9zz1sq4zdnz9b3wzdv9myx-librsvg-2.61.4-dev",
+        "devdoc": "/nix/store/a7siw6zmn629a15mfiv6vf7yzy7byymr-librsvg-2.61.4-devdoc",
+        "out": "/nix/store/0mx8cdxzrmksga865d7y75b0535rb3sw-librsvg-2.61.4"
+      },
+      "system": "aarch64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "librsvg",
+      "broken": false,
+      "derivation": "/nix/store/gmi75zw41r63ndnygkcjc63azq15hkm0-librsvg-2.61.4.drv",
+      "description": "Small library to render SVG images to Cairo surfaces",
+      "install_id": "librsvg",
+      "license": "LGPL-2.0-or-later",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "name": "librsvg-2.61.4",
+      "pname": "librsvg",
+      "rev": "da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "rev_count": 995699,
+      "rev_date": "2026-05-10T19:57:52Z",
+      "scrape_date": "2026-05-13T10:36:28.629900Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "2.61.4",
+      "outputs_to_install": [
+        "out",
+        "out",
+        "out",
+        "out"
+      ],
+      "outputs": {
+        "dev": "/nix/store/6j4lbsn5k0ymzjcf28fwj783zpjhb7r7-librsvg-2.61.4-dev",
+        "devdoc": "/nix/store/n8v31dvz7p961hkmjj9xkl6i4yrg78fy-librsvg-2.61.4-devdoc",
+        "out": "/nix/store/4cvbp49wlc9d7s6rivyz2s4fg8rrz9wd-librsvg-2.61.4"
+      },
+      "system": "x86_64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "libsoup_3",
+      "broken": false,
+      "derivation": "/nix/store/lkxr6691wzn2xqi0f1c3glb81s1kmm7a-libsoup-3.6.6.drv",
+      "description": "HTTP client/server library for GNOME",
+      "install_id": "libsoup_3",
+      "license": "LGPL-2.0-or-later",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "name": "libsoup-3.6.6",
+      "pname": "libsoup_3",
+      "rev": "da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "rev_count": 995699,
+      "rev_date": "2026-05-10T19:57:52Z",
+      "scrape_date": "2026-05-13T09:22:40.892280Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "3.6.6",
+      "outputs_to_install": [
+        "out",
+        "out",
+        "out"
+      ],
+      "outputs": {
+        "debug": "/nix/store/awvy40mfkhrgxjxc0sc0sy3dsd5w7l28-libsoup-3.6.6-debug",
+        "dev": "/nix/store/sjs0l5s4v7zpqvcaivf6jrbd8yppblsc-libsoup-3.6.6-dev",
+        "devdoc": "/nix/store/4rqfd86xnn98a2r20nnnr9rq0s3k0bvc-libsoup-3.6.6-devdoc",
+        "out": "/nix/store/r5pldjfxp8b8h8q151j9clx48a2z18rz-libsoup-3.6.6"
+      },
+      "system": "aarch64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "libsoup_3",
+      "broken": false,
+      "derivation": "/nix/store/2dq6frk1aip4cw31y750ip3diahvcyn8-libsoup-3.6.6.drv",
+      "description": "HTTP client/server library for GNOME",
+      "install_id": "libsoup_3",
+      "license": "LGPL-2.0-or-later",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "name": "libsoup-3.6.6",
+      "pname": "libsoup_3",
+      "rev": "da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "rev_count": 995699,
+      "rev_date": "2026-05-10T19:57:52Z",
+      "scrape_date": "2026-05-13T10:36:28.922283Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "3.6.6",
+      "outputs_to_install": [
+        "out",
+        "out",
+        "out",
+        "out"
+      ],
+      "outputs": {
+        "debug": "/nix/store/dyvzkslb9a118fmhkpf7mbnw7zf8mkcz-libsoup-3.6.6-debug",
+        "dev": "/nix/store/j8ddlagpjb9cj6rzwmy9ry9vhhlppkzk-libsoup-3.6.6-dev",
+        "devdoc": "/nix/store/kn4fbcz1a1zbknwscdps8kpdbv673sfs-libsoup-3.6.6-devdoc",
+        "out": "/nix/store/nrmrlc3lxyfjw20qw78dzdqphq5xnxfn-libsoup-3.6.6"
       },
       "system": "x86_64-linux",
       "group": "toplevel",
@@ -938,6 +1593,77 @@
       "priority": 5
     },
     {
+      "attr_path": "pkg-config",
+      "broken": false,
+      "derivation": "/nix/store/l8wczzfk1ggc1ng1k82579m1j274llc8-pkg-config-wrapper-0.29.2.drv",
+      "description": "Tool that allows packages to find out information about other packages (wrapper script)",
+      "install_id": "pkg-config",
+      "license": "GPL-2.0-or-later",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "name": "pkg-config-wrapper-0.29.2",
+      "pname": "pkg-config",
+      "rev": "da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "rev_count": 995699,
+      "rev_date": "2026-05-10T19:57:52Z",
+      "scrape_date": "2026-05-13T09:23:12.876403Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "0.29.2",
+      "outputs_to_install": [
+        "man",
+        "out",
+        "out"
+      ],
+      "outputs": {
+        "doc": "/nix/store/a614wyav8j0q5a1kh2gzhy41g4y1lv2j-pkg-config-wrapper-0.29.2-doc",
+        "man": "/nix/store/knhjp3ik00llr0xvlknw3bi0whbd69c9-pkg-config-wrapper-0.29.2-man",
+        "out": "/nix/store/kgz9d6ywgjb2wswd1bw5in3ffzs3mdqw-pkg-config-wrapper-0.29.2"
+      },
+      "system": "aarch64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "pkg-config",
+      "broken": false,
+      "derivation": "/nix/store/033f00lp1fj6h3m9abzbxn3i2m76dhsg-pkg-config-wrapper-0.29.2.drv",
+      "description": "Tool that allows packages to find out information about other packages (wrapper script)",
+      "install_id": "pkg-config",
+      "license": "GPL-2.0-or-later",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "name": "pkg-config-wrapper-0.29.2",
+      "pname": "pkg-config",
+      "rev": "da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "rev_count": 995699,
+      "rev_date": "2026-05-10T19:57:52Z",
+      "scrape_date": "2026-05-13T10:37:01.354218Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "0.29.2",
+      "outputs_to_install": [
+        "man",
+        "man",
+        "out",
+        "out",
+        "out",
+        "out"
+      ],
+      "outputs": {
+        "doc": "/nix/store/18hx89ypx3y5jiyvpma5cv9q05avmhiv-pkg-config-wrapper-0.29.2-doc",
+        "man": "/nix/store/kb3cgnjs38aj2kjslwvyg40jy7b5zgyw-pkg-config-wrapper-0.29.2-man",
+        "out": "/nix/store/v7mjkia7ki79s5i24ldbzq1khalhgzk0-pkg-config-wrapper-0.29.2"
+      },
+      "system": "x86_64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
       "attr_path": "pre-commit",
       "broken": false,
       "derivation": "/nix/store/mm18d02smyl30h0ibh35j6wq6gr19xr0-pre-commit-4.5.1.drv",
@@ -1184,6 +1910,127 @@
       "priority": 5
     },
     {
+      "attr_path": "rustup",
+      "broken": false,
+      "derivation": "/nix/store/bn1cfnkbwch3f6k9vyf88hqscxr0zdxf-rustup-1.29.0.drv",
+      "description": "Rust toolchain installer",
+      "install_id": "rustup",
+      "license": "[ Apache-2.0, MIT ]",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "name": "rustup-1.29.0",
+      "pname": "rustup",
+      "rev": "da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "rev_count": 995699,
+      "rev_date": "2026-05-10T19:57:52Z",
+      "scrape_date": "2026-05-13T08:54:12.884856Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "1.29.0",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/zviv90gxv3gpnr05gsvyq81v45y58312-rustup-1.29.0"
+      },
+      "system": "aarch64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "rustup",
+      "broken": false,
+      "derivation": "/nix/store/99h75vpm8v0fbbd6xa2wyzyhnvsnrk69-rustup-1.29.0.drv",
+      "description": "Rust toolchain installer",
+      "install_id": "rustup",
+      "license": "[ Apache-2.0, MIT ]",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "name": "rustup-1.29.0",
+      "pname": "rustup",
+      "rev": "da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "rev_count": 995699,
+      "rev_date": "2026-05-10T19:57:52Z",
+      "scrape_date": "2026-05-13T09:24:24.783217Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "1.29.0",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/d75lzy3my3nznkr4lan25qlglzj9dinc-rustup-1.29.0"
+      },
+      "system": "aarch64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "rustup",
+      "broken": false,
+      "derivation": "/nix/store/ih3j83h4bj2fybglvcrqj49fxgw2yky0-rustup-1.29.0.drv",
+      "description": "Rust toolchain installer",
+      "install_id": "rustup",
+      "license": "[ Apache-2.0, MIT ]",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "name": "rustup-1.29.0",
+      "pname": "rustup",
+      "rev": "da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "rev_count": 995699,
+      "rev_date": "2026-05-10T19:57:52Z",
+      "scrape_date": "2026-05-13T09:56:59.552945Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "1.29.0",
+      "outputs_to_install": [
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/927rnc4yvpas5rgsmm1ymih8vv3pivds-rustup-1.29.0"
+      },
+      "system": "x86_64-darwin",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "rustup",
+      "broken": false,
+      "derivation": "/nix/store/b0c2kqnq2fb9cj06p97dbxvvwyahfzrd-rustup-1.29.0.drv",
+      "description": "Rust toolchain installer",
+      "install_id": "rustup",
+      "license": "[ Apache-2.0, MIT ]",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "name": "rustup-1.29.0",
+      "pname": "rustup",
+      "rev": "da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "rev_count": 995699,
+      "rev_date": "2026-05-10T19:57:52Z",
+      "scrape_date": "2026-05-13T10:38:12.618826Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "1.29.0",
+      "outputs_to_install": [
+        "out",
+        "out"
+      ],
+      "outputs": {
+        "out": "/nix/store/xiy3ydpzw5bdqqd7ri8qbg3bn4r2qxg1-rustup-1.29.0"
+      },
+      "system": "x86_64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
       "attr_path": "taplo",
       "broken": false,
       "derivation": "/nix/store/pi7kg5a0615sy77631ih65kphjs4wfzw-taplo-0.10.0.drv",
@@ -1298,6 +2145,77 @@
       ],
       "outputs": {
         "out": "/nix/store/apnl40iw6nrfrxs616qwpl7b0fs7fl5k-taplo-0.10.0"
+      },
+      "system": "x86_64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "webkitgtk_4_1",
+      "broken": false,
+      "derivation": "/nix/store/2g3ckpp5y3cfp2f996lcwka6yshxdfqy-webkitgtk-2.52.3+abi=4.1.drv",
+      "description": "Web content rendering engine, GTK port",
+      "install_id": "webkitgtk_4_1",
+      "license": "BSD-2-Clause",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "name": "webkitgtk-2.52.3+abi=4.1",
+      "pname": "webkitgtk_4_1",
+      "rev": "da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "rev_count": 995699,
+      "rev_date": "2026-05-10T19:57:52Z",
+      "scrape_date": "2026-05-13T09:26:02.409411Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "2.52.3+abi=4.1",
+      "outputs_to_install": [
+        "out",
+        "out",
+        "out"
+      ],
+      "outputs": {
+        "debug": "/nix/store/bn4wz5xhxy5p9gr4vrnrdb9h3dn2a8mi-webkitgtk-2.52.3+abi=4.1-debug",
+        "dev": "/nix/store/2vr019pyba70xdfg22j8979bkppay8dv-webkitgtk-2.52.3+abi=4.1-dev",
+        "devdoc": "/nix/store/60za4jykl1k9wl4iiarkm69zw34j9gig-webkitgtk-2.52.3+abi=4.1-devdoc",
+        "out": "/nix/store/hic41wd58pp1ifc4l4gazkvv6l30k7gi-webkitgtk-2.52.3+abi=4.1"
+      },
+      "system": "aarch64-linux",
+      "group": "toplevel",
+      "priority": 5
+    },
+    {
+      "attr_path": "webkitgtk_4_1",
+      "broken": false,
+      "derivation": "/nix/store/rbbfiy6mdly1zhcx34f9qa2wxkwxg56v-webkitgtk-2.52.3+abi=4.1.drv",
+      "description": "Web content rendering engine, GTK port",
+      "install_id": "webkitgtk_4_1",
+      "license": "BSD-2-Clause",
+      "locked_url": "https://github.com/flox/nixpkgs?rev=da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "name": "webkitgtk-2.52.3+abi=4.1",
+      "pname": "webkitgtk_4_1",
+      "rev": "da5ad661ba4e5ef59ba743f0d112cbc30e474f32",
+      "rev_count": 995699,
+      "rev_date": "2026-05-10T19:57:52Z",
+      "scrape_date": "2026-05-13T10:39:47.097521Z",
+      "stabilities": [
+        "staging",
+        "unstable"
+      ],
+      "unfree": false,
+      "version": "2.52.3+abi=4.1",
+      "outputs_to_install": [
+        "out",
+        "out",
+        "out",
+        "out"
+      ],
+      "outputs": {
+        "debug": "/nix/store/8j6mph6ymvzj2an64yca9yir4i4hl9x9-webkitgtk-2.52.3+abi=4.1-debug",
+        "dev": "/nix/store/wg2ljd9xlflc04rcpxrllf8iz6hf7ghk-webkitgtk-2.52.3+abi=4.1-dev",
+        "devdoc": "/nix/store/sk2ca38sn9ddcczanzg20imzslxdly5a-webkitgtk-2.52.3+abi=4.1-devdoc",
+        "out": "/nix/store/nrmz5y0i49qmbj40na6piya3kzcc3g36-webkitgtk-2.52.3+abi=4.1"
       },
       "system": "x86_64-linux",
       "group": "toplevel",

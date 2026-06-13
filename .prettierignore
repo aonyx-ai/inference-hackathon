@@ -6,6 +6,10 @@ node_modules/
 dist/
 *.tsbuildinfo
 
+# Rust / Tauri build artifacts
+target/
+gen/
+
 # Bun lockfile
 bun.lock
 

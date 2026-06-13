@@ -6,6 +6,34 @@ schema-version = "1.12.0"
 bun.pkg-path = "bun"
 nodejs.pkg-path = "nodejs"
 
+# Rust toolchain for the Tauri backend. Rustup installs rustc, cargo, clippy,
+# rust-analyzer, and rustfmt per the pinned rust-toolchain.toml.
+rustup.pkg-path = "rustup"
+libiconv.pkg-path = "libiconv"
+libiconv.systems = ["aarch64-darwin", "x86_64-darwin"]
+clang.pkg-path = "clang"
+clang.systems = ["aarch64-darwin", "x86_64-darwin"]
+gcc.pkg-path = "gcc"
+gcc.systems = ["aarch64-linux", "x86_64-linux"]
+# Source for the standard library, used by rust-analyzer for diagnostics.
+rust-lib-src.pkg-group = "rust-toolchain"
+rust-lib-src.pkg-path = "rustPlatform.rustLibSrc"
+
+# Tauri build dependencies. On macOS these ship with the system; on Linux they
+# come from nixpkgs and are only installed there.
+pkg-config.pkg-path = "pkg-config"
+pkg-config.systems = ["aarch64-linux", "x86_64-linux"]
+webkitgtk_4_1.pkg-path = "webkitgtk_4_1"
+webkitgtk_4_1.systems = ["aarch64-linux", "x86_64-linux"]
+gtk3.pkg-path = "gtk3"
+gtk3.systems = ["aarch64-linux", "x86_64-linux"]
+libsoup_3.pkg-path = "libsoup_3"
+libsoup_3.systems = ["aarch64-linux", "x86_64-linux"]
+librsvg.pkg-path = "librsvg"
+librsvg.systems = ["aarch64-linux", "x86_64-linux"]
+libayatana-appindicator.pkg-path = "libayatana-appindicator"
+libayatana-appindicator.systems = ["aarch64-linux", "x86_64-linux"]
+
 # Local development tools
 git.pkg-path = "git"
 git.outputs = "all"
